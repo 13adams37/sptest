@@ -8,6 +8,10 @@ class Pages:
         self.window = None
         self.addtswindow = None
         self.addwindow = None
+        self.credentialswindow = None
+
+        self.dogovornumber = None
+        self.actnumber = None
 
     def mainpage(self):
         mainpage = [
@@ -34,26 +38,49 @@ class Pages:
         ]
         self.addwindow = sg.Window('AddPage', addpage, resizable=True).Finalize()
 
+    def credentialspage(self):
+        # self.actnumber, self.dogovornumber = None, None  # reset
+        credentials = [
+            [sg.Text('Договор'), sg.InputText(key='-DOGOVOR-')],  # type + list
+            [sg.Text('Акт'), sg.InputText(key='-AKT-')],  # type + list
+            [sg.Submit('Дальше', size=(10, 0), button_color='green', p=(40, 0)),
+             sg.Cancel('Отмена', button_color='red')]
+        ]
+        self.credentialswindow = sg.Window('DogovorPage', credentials, resizable=True,
+                                           element_justification="right").Finalize()
+        while True:
+            event, values = self.credentialswindow.read()
+            if event == "Дальше":
+                self.dogovornumber = values["-DOGOVOR-"]
+                self.actnumber = values["-AKT-"]
+                self.credentialswindow.close()
+                return 1
+            if event in ('Отмена', sg.WIN_CLOSED):
+                self.credentialswindow.close()
+                return 0
+
     def addtspage(self):
         addtspage = [
-            [sg.Text('Договор'), sg.InputText(key='-DOGOVOR-')],
-            [sg.Text('Акт'), sg.InputText(key='-AKT-')],
-            [sg.Text('Наименование ТС'), sg.InputText(key='-TSNAME-')],
-            [sg.Text('Модель'), sg.InputText(key='-MODEL-')],
-            [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],
-            [sg.Text('Производитель'), sg.InputText(key='-VENDOR-')],
-            [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-')],
-            [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')],
-            [sg.Text('УФ'), sg.InputText(key='-UF-')],
+            [sg.Text('Договор'),
+             sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber if not None else "manual", disabled=True)],
+            [sg.Text('Акт'),
+             sg.InputText(key='-AKT-', default_text=self.actnumber if not None else "manual", disabled=True)],
+            [sg.Text('Наименование ТС'), sg.InputText(key='-TSNAME-')],  # input + spisok. link model, vendor
+            [sg.Text('Модель'), sg.InputText(key='-MODEL-')],  # input, link tsname, vendor
+            [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
+            [sg.Text('Производитель'), sg.InputText(key='-VENDOR-')],  # input + spisok. link tsname, model
+            [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-')],  # locked, checkbox + nextint
+            [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')],  # locked + kol-vo objects in LEVEL
+            [sg.Text('УФ'), sg.InputText(key='-UF-')],  # checkbox
             [sg.Text('РГГ'), sg.InputText(key='-RGG-')],
             [sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-')],
             [sg.Text('Признак (уровень)'), sg.InputText(key='-LEVEL-')],
-            [sg.Text('Степень секретности'), sg.InputText(key='-SS-')],
-            [sg.Text('Категорий помещения'), sg.InputText(key='-KP-')],
+            [sg.Text('Степень секретности'), sg.InputText(key='-SS-')],  # spisok
+            [sg.Text('Категорий помещения'), sg.InputText(key='-KP-')],  # spisok
             [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="center",
                      expand_x=True)]
         ]
-        self.addtswindow = sg.Window('AddPage', addtspage, resizable=True,
+        self.addtswindow = sg.Window('AddTsPage', addtspage, resizable=True,
                                      element_justification="right").Finalize()
 
         while True:  # TSPage
@@ -61,7 +88,6 @@ class Pages:
             # TSPage realisation
 
             if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
-                self.addwindow.UnHide()
                 self.addtswindow.close()
                 break
 
@@ -83,7 +109,14 @@ class SpUi:
                     # AddPage realisation
                     if event == "-AddTs-":
                         pages.addwindow.Hide()
-                        pages.addtspage()
+                        # pages.credentialspage()
+                        if pages.credentialspage():
+                            pages.addtspage()
+
+                        # pages.addtspage()
+
+                        pages.addwindow.UnHide()
+                        pages.actnumber, pages.dogovornumber = None, None
 
                     if event == "-AddKomers-":
                         # Добавление огранизации
