@@ -38,12 +38,14 @@ class Pages:
         ]
         self.addwindow = sg.Window('AddPage', addpage, resizable=True).Finalize()
 
+    @property
     def credentialspage(self):
-        # self.actnumber, self.dogovornumber = None, None  # reset
+        self.actnumber, self.dogovornumber = None, None  # reset
         credentials = [
             [sg.Text('Договор'), sg.InputText(key='-DOGOVOR-')],  # type + list
             [sg.Text('Акт'), sg.InputText(key='-AKT-')],  # type + list
-            [sg.Submit('Дальше', size=(10, 0), button_color='green', p=(40, 0)),
+            [sg.Button('Без номеров', size=(10, 0), button_color='gray', p=(20, 0)),
+             sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0)),
              sg.Cancel('Отмена', button_color='red')]
         ]
         self.credentialswindow = sg.Window('DogovorPage', credentials, resizable=True,
@@ -51,8 +53,19 @@ class Pages:
         while True:
             event, values = self.credentialswindow.read()
             if event == "Дальше":
-                self.dogovornumber = values["-DOGOVOR-"]
-                self.actnumber = values["-AKT-"]
+                if values['-DOGOVOR-'] and values['-AKT-'] != '':
+                    self.dogovornumber = values["-DOGOVOR-"]
+                    self.actnumber = values["-AKT-"]
+                else:
+                    sg.Window('Ошибочка', [[sg.T('Заполните поля!')], [sg.Button('Понял')]],
+                              element_justification="c", no_titlebar=True).read(close=True)
+                    self.credentialswindow.close()
+                    return 0
+                self.credentialswindow.close()
+                return 1
+            if event == "Без номеров":
+                self.dogovornumber = "Null"
+                self.actnumber = "Null"
                 self.credentialswindow.close()
                 return 1
             if event in ('Отмена', sg.WIN_CLOSED):
@@ -61,10 +74,8 @@ class Pages:
 
     def addtspage(self):
         addtspage = [
-            [sg.Text('Договор'),
-             sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber if not None else "manual", disabled=True)],
-            [sg.Text('Акт'),
-             sg.InputText(key='-AKT-', default_text=self.actnumber if not None else "manual", disabled=True)],
+            [sg.Text('Договор'), sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True)],
+            [sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True)],
             [sg.Text('Наименование ТС'), sg.InputText(key='-TSNAME-')],  # input + spisok. link model, vendor
             [sg.Text('Модель'), sg.InputText(key='-MODEL-')],  # input, link tsname, vendor
             [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
@@ -77,8 +88,8 @@ class Pages:
             [sg.Text('Признак (уровень)'), sg.InputText(key='-LEVEL-')],
             [sg.Text('Степень секретности'), sg.InputText(key='-SS-')],  # spisok
             [sg.Text('Категорий помещения'), sg.InputText(key='-KP-')],  # spisok
-            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="center",
-                     expand_x=True)]
+            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left",
+                     expand_x=True), sg.Submit('Обновить', size=(10, 0), button_color='gray', p=(20, 0))]
         ]
         self.addtswindow = sg.Window('AddTsPage', addtspage, resizable=True,
                                      element_justification="right").Finalize()
@@ -109,14 +120,11 @@ class SpUi:
                     # AddPage realisation
                     if event == "-AddTs-":
                         pages.addwindow.Hide()
-                        # pages.credentialspage()
-                        if pages.credentialspage():
+                        if pages.credentialspage:  # if closed check
                             pages.addtspage()
 
-                        # pages.addtspage()
-
                         pages.addwindow.UnHide()
-                        pages.actnumber, pages.dogovornumber = None, None
+                        # pages.actnumber, pages.dogovornumber = None, None
 
                     if event == "-AddKomers-":
                         # Добавление огранизации
