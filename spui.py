@@ -12,9 +12,9 @@ class Pages:
     def mainpage(self):
         mainpage = [
             [sg.Text('Добавление', key="-Add-", enable_events=True, justification="center", expand_x=True,
-                     expand_y=True)],
+                     expand_y=True, auto_size_text=True, pad=(30, 30))],
             [sg.Text('Редактирование', key="-Edit-", enable_events=True, justification="center", expand_x=True,
-                     expand_y=True)]
+                     expand_y=True, pad=(30, 30))]
         ]
         self.window = sg.Window('MainPage', mainpage, resizable=True).Finalize()
 
@@ -22,12 +22,15 @@ class Pages:
         addpage = [
             [sg.Text('Добавить организацию', key="-AddKomers-", enable_events=True, justification="center",
                      expand_x=True,
-                     expand_y=True)],
+                     expand_y=True,
+                     pad=(30, 30))],
             [sg.Text('Добавить проверенное ТС', key="-AddTs-", enable_events=True, justification="center",
                      expand_x=True,
-                     expand_y=True)],
+                     expand_y=True,
+                     pad=(30, 30))],
             [sg.Text('Закрыть', key="-CloseAddPage-", enable_events=True, justification="center",
-                     expand_x=True)]
+                     expand_x=True,
+                     pad=(30, 30))]
         ]
         self.addwindow = sg.Window('AddPage', addpage, resizable=True).Finalize()
 
@@ -53,6 +56,15 @@ class Pages:
         self.addtswindow = sg.Window('AddPage', addtspage, resizable=True,
                                      element_justification="right").Finalize()
 
+        while True:  # TSPage
+            event, values = self.addtswindow.read()
+            # TSPage realisation
+
+            if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
+                self.addwindow.UnHide()
+                self.addtswindow.close()
+                break
+
 
 class SpUi:
 
@@ -63,7 +75,6 @@ class SpUi:
 
         while True:  # MainPage
             event, values = pages.window.read()
-            # MainPage realisation
             if event == "-Add-":
                 pages.window.Hide()
                 pages.addaddpage()
@@ -73,20 +84,17 @@ class SpUi:
                     if event == "-AddTs-":
                         pages.addwindow.Hide()
                         pages.addtspage()
-                        while True:  # TSPage
-                            event, values = pages.addtswindow.read()
-                            # TSPage realisation
-                            if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
-                                pages.addwindow.UnHide()
-                                pages.addtswindow.close()
-                                break
+
+                    if event == "-AddKomers-":
+                        # Добавление огранизации
+                        pass
 
                     if event == sg.WIN_CLOSED or event == "-CloseAddPage-":
                         pages.window.UnHide()
                         pages.addwindow.close()
                         break
 
-            if event == sg.WIN_CLOSED:  # mainpage events
+            if event == sg.WIN_CLOSED:
                 break
             # mainpage event, values
         pages.window.close()
