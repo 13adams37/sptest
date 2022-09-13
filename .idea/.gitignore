@@ -1,7 +1,6 @@
-# Default ignored files
 /shelf/
 /workspace.xml
 /vcs.xml
-/build/
-/dist/
-/main.spec
+../build/
+../dist/
+../main.spec
