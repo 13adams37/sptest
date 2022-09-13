@@ -15,28 +15,49 @@ class Pages:
 
     def mainpage(self):
         mainpage = [
-            [sg.Text('Добавление', key="-Add-", enable_events=True, justification="center", expand_x=True,
-                     expand_y=True, auto_size_text=True, pad=(30, 30))],
-            [sg.Text('Редактирование', key="-Edit-", enable_events=True, justification="center", expand_x=True,
-                     expand_y=True, pad=(30, 30))]
+            [sg.Button('Добавление', key="-Add-", enable_events=True,
+                       expand_x=True,
+                       expand_y=True,
+                       pad=(30, 30),
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       )],
+            [sg.Button('Редактирование', key="-Edit-", enable_events=True,
+                       expand_x=True,
+                       expand_y=True,
+                       pad=(30, 30),
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       )]
         ]
         self.window = sg.Window('MainPage', mainpage, resizable=True).Finalize()
 
     def addaddpage(self):
         addpage = [
-            [sg.Text('Добавить организацию', key="-AddKomers-", enable_events=True, justification="center",
-                     expand_x=True,
-                     expand_y=True,
-                     pad=(30, 30))],
-            [sg.Text('Добавить проверенное ТС', key="-AddTs-", enable_events=True, justification="center",
-                     expand_x=True,
-                     expand_y=True,
-                     pad=(30, 30))],
-            [sg.Text('Закрыть', key="-CloseAddPage-", enable_events=True, justification="center",
-                     expand_x=True,
-                     pad=(30, 30))]
+            [sg.Button('Добавить организацию', key="-AddKomers-", enable_events=True,
+                       expand_x=True,
+                       expand_y=True,
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       pad=(30, 30))],
+            [sg.Button('Добавить проверенное ТС', key="-AddTs-", enable_events=True,
+                       expand_x=True,
+                       expand_y=True,
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       pad=(30, 30))],
+            [sg.Button('Закрыть', key="-CloseAddPage-", enable_events=True,
+                       expand_x=True,
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       pad=(30, 30))]
         ]
-        self.addwindow = sg.Window('AddPage', addpage, resizable=True).Finalize()
+        self.addwindow = sg.Window('AddPage', addpage, resizable=True, element_justification="c").Finalize()
 
     @property
     def credentialspage(self):
@@ -74,25 +95,49 @@ class Pages:
 
     def addtspage(self):
         addtspage = [
-            [sg.Text('Договор'), sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True)],
-            [sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True)],
-            [sg.Text('Наименование ТС'), sg.InputText(key='-TSNAME-')],  # input + spisok. link model, vendor
-            [sg.Text('Модель'), sg.InputText(key='-MODEL-')],  # input, link tsname, vendor
-            [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
-            [sg.Text('Производитель'), sg.InputText(key='-VENDOR-')],  # input + spisok. link tsname, model
-            [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-')],  # locked, checkbox + nextint
-            [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')],  # locked + kol-vo objects in LEVEL
-            [sg.Text('УФ'), sg.InputText(key='-UF-')],  # checkbox
-            [sg.Text('РГГ'), sg.InputText(key='-RGG-')],
-            [sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-')],
-            [sg.Text('Признак (уровень)'), sg.InputText(key='-LEVEL-')],
-            [sg.Text('Степень секретности'), sg.InputText(key='-SS-')],  # spisok
-            [sg.Text('Категорий помещения'), sg.InputText(key='-KP-')],  # spisok
-            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left",
-                     expand_x=True), sg.Submit('Обновить', size=(10, 0), button_color='gray', p=(20, 0))]
+            [sg.Column(
+                [[sg.Text('Договор'),
+                  sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True, s=(5, 0)),
+                  sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True, s=(5, 0))]]
+
+                , justification="c"
+            )],
+            [sg.Column(
+                [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='-TSNAME-', size=(45, 0)),
+                  sg.Checkbox("Save", k="-TSSAVE-")],
+                 # input + spisok. link model, vendor
+                 [sg.Text('Модель'),
+                  sg.InputCombo(["get from bd + kostil"], key='-MODEL-', size=(45, 0)),
+                  sg.Checkbox("Save", k="-MODELSAVE-")],
+                 # input, link tsname, vendor
+                 [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
+                 [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='-VENDOR-', size=(45, 0)),
+                  sg.Checkbox("Save", k="-VENDORSAVE-")],
+                 # input + spisok. link tsname, model
+                 [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-'), sg.Checkbox("Авто", k="-CZZAUTO-")],
+                 # locked, checkbox + nextint
+                 [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')]]
+                , justification="r", element_justification="r"
+            )],  # locked + kol-vo objects in LEVEL
+            [sg.Column(
+                [[sg.Checkbox("УФ", key='-UF-'), sg.Text('РГГ'), sg.InputText(key='-RGG-', visible=False),
+                  sg.FileBrowse(),
+                  sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-', s=(7, 0))]]
+                , justification="c")],
+            [sg.Column(
+                [[sg.Text('Признак (уровень)'),
+                  sg.Combo(["Изделие", "Элемент", "Составная часть"], readonly=True, key="-LEVEL-")],
+                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='-SS-', s=(5, 0)),  # spisok
+                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='-KP-', s=(5, 0))]],
+                justification="c", element_justification="c"
+            )],
+            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
+             sg.Button("Сохранить"),
+             sg.Submit('Обновить', size=(10, 0), button_color='gray', p=(20, 0)),
+             sg.Button("Новое ТС"),
+             ]
         ]
-        self.addtswindow = sg.Window('AddTsPage', addtspage, resizable=True,
-                                     element_justification="right").Finalize()
+        self.addtswindow = sg.Window('AddTsPage', addtspage, resizable=True, element_justification="").Finalize()
 
         while True:  # TSPage
             event, values = self.addtswindow.read()
