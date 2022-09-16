@@ -2,6 +2,8 @@
 # may be later :(
 import PySimpleGUI as sg
 
+NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+
 
 class Pages:
     def __init__(self):
@@ -98,48 +100,50 @@ class Pages:
     def addtspage(self):
         headings = ['Дог.', 'Акт', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'РГГ', 'РГГ пп', 'П', 'Сек',
                     'Кат.', 'Состав']
-        self.tsdata = [['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ], ]
+        self.tsdata = [NULLLIST, ]
         addtspage = [
             [sg.Column(
                 [[sg.Text('Договор'),
-                  sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True, s=(5, 0),
+                  sg.InputText(key='dogovor', default_text=self.dogovornumber, disabled=True, s=(5, 0),
                                text_color="black"),
-                  sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True, s=(5, 0),
+                  sg.Text('Акт'), sg.InputText(key='act', default_text=self.actnumber, disabled=True, s=(5, 0),
                                                text_color="black")]]
                 , justification="c"
             )],
             [sg.Column(
-                [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='-TSNAME-', size=(45, 0)),
+                [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='name', size=(45, 0)),
                   sg.Checkbox("Save", k="-TSSAVE-")],
                  # input + spisok. link model, vendor
                  [sg.Text('Модель'),
-                  sg.InputCombo(["get from bd + kostil"], key='-MODEL-', size=(45, 0)),
+                  sg.InputCombo(["get from bd + kostil"], key='model', size=(45, 0)),
                   sg.Checkbox("Save", k="-MODELSAVE-")],
                  # input, link tsname, vendor
-                 [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
-                 [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='-VENDOR-', size=(45, 0)),
+                 [sg.Text('Заводской номер'), sg.InputText(key='partnumber', enable_events=True),
+                  sg.Checkbox("б/н", k="nopart", enable_events=True)],  # mb add save button
+                 [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='vendor', size=(45, 0)),
                   sg.Checkbox("Save", k="-VENDORSAVE-")],
                  # input + spisok. link tsname, model
-                 [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-'), sg.Checkbox("Авто", k="-CZZAUTO-")],
+                 [sg.Text('СЗЗ-1'), sg.InputText(key='serial1'), sg.Checkbox("Авто", k="-CZZAUTO-")],
                  # locked, checkbox + nextint
-                 [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')]]
+                 [sg.Text('СЗЗ-2'), sg.InputText(key='serial2')]]
                 , justification="r", element_justification="r"
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
-                [[sg.Checkbox("УФ", key='-UF-'), sg.Text('РГГ'), sg.InputText(key='-RGG-', visible=False),
+                [[sg.Checkbox("УФ", key='uv'), sg.Text('РГГ'), sg.InputText(key='rgg', visible=False),
                   sg.FileBrowse(),
-                  sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-', s=(7, 0))]]
+                  sg.Text('РГГ пп'), sg.InputText(key='rggpp', s=(7, 0))]]
                 , justification="c")],
             [sg.Column(
                 [[sg.Text('Признак (уровень)'),
-                  sg.Combo(self.tsavailable, readonly=True, enable_events=True,
-                           key="-LEVEL-"), sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(4, 2))],
-                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='-SS-', s=(5, 0)),  # spisok
-                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='-KP-', s=(5, 0))]],
+                  sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
+                           default_value=self.tsavailable[0]),
+                  sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(4, 2))],
+                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='ss', s=(5, 0)),  # spisok
+                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='kp', s=(5, 0))]],
                 justification="c", element_justification="c"
             )],
             [sg.Table(self.tsdata, headings=headings, justification='l', key="-TABLE-", visible=False,
-                      auto_size_columns=False)],
+                      auto_size_columns=False, max_col_width=5)],
             [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
              sg.Button("Сохранить"),
              sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0)),
@@ -148,6 +152,15 @@ class Pages:
         ]
         self.addtswindow = sg.Window('AddTsPage', addtspage, resizable=True, element_justification="").Finalize()
         table = self.addtswindow['-TABLE-']
+        self.tsdata = []
+        if self.tsavailable == ["Составная часть"]:
+            self.addtswindow['level'].update()
+        if "Изделие" in self.tsavailable or "Элемент" in self.tsavailable:
+            self.addtswindow["-ADDMORE-"].update(visible=True)
+            self.addtswindow["-TABLE-"].update(visible=True)
+        else:
+            self.addtswindow["-ADDMORE-"].update(visible=False)
+            self.addtswindow["-TABLE-"].update(visible=False)
 
         # state handler:
         # 0 = master, can add two slaves, or not, depends of TS type!
@@ -159,7 +172,7 @@ class Pages:
             # TSPage realisation
             if event == "-REFR-":
                 print(table.Get())
-            elif event == "-LEVEL-":
+            elif event == "level":
                 if values[event] == "Изделие" or values[event] == "Элемент":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
@@ -170,26 +183,33 @@ class Pages:
                 # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
                 page2 = Pages()
                 page3 = Pages()
-                if values["-LEVEL-"] == "Изделие":
+                if values["level"] == "Изделие":
                     page2.tsavailable = ["Элемент", "Составная часть"]
                     page2.actnumber = self.actnumber
                     page2.dogovornumber = self.dogovornumber
 
                     page2.addtspage()
 
-                    self.tsdata.append(page2.tsdata)
-                    table.Update(self.tsdata)
+                    if NULLLIST not in page2.tsdata and page2.tsdata:
+                        self.tsdata.append(page2.tsdata)
+                        table.Update(self.tsdata)
                 else:
                     page3.tsavailable = ["Составная часть"]
                     page3.actnumber = self.actnumber
                     page3.dogovornumber = self.dogovornumber
 
                     page3.addtspage()
-
-                    self.tsdata.append(page3.tsdata)
-                    table.Update(self.tsdata)
+                    if NULLLIST not in page3.tsdata and page3.tsdata:
+                        self.tsdata.append(page3.tsdata)
+                        table.Update(self.tsdata)
 
                 print("debug master")
+                print(self.tsdata)
+            elif event == "nopart":
+                if values[event]:
+                    self.addtswindow["partnumber"].update("б/н", disabled=True)
+                else:
+                    self.addtswindow["partnumber"].update("", disabled=False)
 
             elif event == "Сохранить":
                 self.tsdata = self.get_ts_values(values)
@@ -199,11 +219,16 @@ class Pages:
                 return 0
 
     def get_ts_values(self, values):
+        allowed_list = ["dogovor", "act", "name", "model", "partnumber", "vendor", "serial1", "serial2", "uv", "rgg",
+                        "rggpp", "level", "ss", "kp"]
         listed = []
-        for value in values.values():
-            if type(value) == str:
-                listed.append(value)
-        print(values)
+        req = self.addtswindow["-TABLE-"].Get()
+        for value in values:
+            if value in allowed_list:
+                listed.append(values[value])
+        if NULLLIST not in req and req:
+            listed.append(req)
+        print(listed)
         return listed
 
 
