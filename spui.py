@@ -192,20 +192,11 @@ class Pages:
                 print("debug master")
 
             elif event == "Сохранить":
-                # self.tsdata.append(self.get_ts_values(values))
                 self.tsdata = self.get_ts_values(values)
-                # table.Update(self.tsdata)
-                # table.Update(self.get_ts_values(values))
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 self.addtswindow.close()
                 return 0
-
-    # def correct_values_check(self, values):
-    #     for value in values.items():
-    #         if type(value) != bool:
-    #             if value == "" or None:
-    #                 return 1
 
     def get_ts_values(self, values):
         listed = []
@@ -214,151 +205,6 @@ class Pages:
                 listed.append(value)
         print(values)
         return listed
-
-    # def add_second_ts_page(self):
-    #     headings = ['Дог.', 'Акт', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'РГГ', 'РГГ пп', 'П', 'Сек',
-    #                 'Кат.']
-    #     second_data = [
-    #         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ],
-    #     ]
-    #     second_page = [
-    #         [sg.Column(
-    #             [[sg.Text('Договор'),
-    #               sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True, s=(5, 0),
-    #                            text_color="black"),
-    #               sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True, s=(5, 0),
-    #                                            text_color="black")]]
-    #             , justification="c"
-    #         )],
-    #         [sg.Column(
-    #             [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='-TSNAME-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-TSSAVE-")],
-    #              # input + spisok. link model, vendor
-    #              [sg.Text('Модель'),
-    #               sg.InputCombo(["get from bd + kostil"], key='-MODEL-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-MODELSAVE-")],
-    #              # input, link tsname, vendor
-    #              [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
-    #              [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='-VENDOR-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-VENDORSAVE-")],
-    #              # input + spisok. link tsname, model
-    #              [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-'), sg.Checkbox("Авто", k="-CZZAUTO-")],
-    #              # locked, checkbox + nextint
-    #              [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')]]
-    #             , justification="r", element_justification="r"
-    #         )],  # locked + kol-vo objects in LEVEL
-    #         [sg.Column(
-    #             [[sg.Checkbox("УФ", key='-UF-'), sg.Text('РГГ'), sg.InputText(key='-RGG-', visible=False),
-    #               sg.FileBrowse(),
-    #               sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-', s=(7, 0))]]
-    #             , justification="c")],
-    #         [sg.Column(
-    #             [[sg.Text('Признак (уровень)'),
-    #               sg.Combo(["Элемент", "Составная часть"], readonly=True, enable_events=True,
-    #                        key="-LEVEL-"), sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(4, 2))],
-    #              [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='-SS-', s=(5, 0)),  # spisok
-    #               sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='-KP-', s=(5, 0))]],
-    #             justification="c", element_justification="c"
-    #         )],
-    #         [sg.Table(second_data, headings=headings, justification='l', key="-TABLE-", visible=False)],
-    #         [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
-    #          sg.Button("Сохранить"),
-    #          sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0)),
-    #          sg.Button("Новое ТС"),
-    #          ]
-    #     ]
-    #     second_ts_window = sg.Window('AddSecondTsPage', second_page, resizable=True).Finalize()
-    #     while True:  # TSPage
-    #         event, values = second_ts_window.read()
-    #         # TSPage realisation
-    #         if event == "-REFR-":
-    #             print(values)
-    #         elif event == "-LEVEL-":
-    #             if values[event] == "Элемент":
-    #                 second_ts_window["-ADDMORE-"].update(visible=True)
-    #                 second_ts_window["-TABLE-"].update(visible=True)
-    #             else:
-    #                 second_ts_window["-ADDMORE-"].update(visible=False)
-    #                 second_ts_window["-TABLE-"].update(visible=False)
-    #         elif event == "-ADDMORE-":
-    #             second_data = self.add_third_ts_page()
-    #             second_ts_window.refresh()
-    #             print("debug window 2", second_data)
-    #
-    #         elif event == "Сохранить":
-    #             print(values)
-    #
-    #         elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
-    #             second_ts_window.close()
-    #             return 0
-    #
-    # def add_third_ts_page(self):
-    #     third_data = [
-    #         [],
-    #     ]
-    #     third_page = [
-    #         [sg.Column(
-    #             [[sg.Text('Договор'),
-    #               sg.InputText(key='-DOGOVOR-', default_text=self.dogovornumber, disabled=True, s=(5, 0),
-    #                            text_color="black"),
-    #               sg.Text('Акт'), sg.InputText(key='-AKT-', default_text=self.actnumber, disabled=True, s=(5, 0),
-    #                                            text_color="black")]]
-    #             , justification="c"
-    #         )],
-    #         [sg.Column(
-    #             [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='-TSNAME-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-TSSAVE-")],
-    #              # input + spisok. link model, vendor
-    #              [sg.Text('Модель'),
-    #               sg.InputCombo(["get from bd + kostil"], key='-MODEL-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-MODELSAVE-")],
-    #              # input, link tsname, vendor
-    #              [sg.Text('Заводской номер'), sg.InputText(key='-PARTNUMBER-')],  # mb add save button
-    #              [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='-VENDOR-', size=(45, 0)),
-    #               sg.Checkbox("Save", k="-VENDORSAVE-")],
-    #              # input + spisok. link tsname, model
-    #              [sg.Text('СЗЗ-1'), sg.InputText(key='-CZZ1-'), sg.Checkbox("Авто", k="-CZZAUTO-")],
-    #              # locked, checkbox + nextint
-    #              [sg.Text('СЗЗ-2'), sg.InputText(key='-CZZ2-')]]
-    #             , justification="r", element_justification="r"
-    #         )],  # locked + kol-vo objects in LEVEL
-    #         [sg.Column(
-    #             [[sg.Checkbox("УФ", key='-UF-'), sg.Text('РГГ'), sg.InputText(key='-RGG-', visible=False),
-    #               sg.FileBrowse(),
-    #               sg.Text('РГГ пп'), sg.InputText(key='-RGGPP-', s=(7, 0))]]
-    #             , justification="c")],
-    #         [sg.Column(
-    #             [[sg.Text('Признак (уровень)'),
-    #               sg.Combo(["Составная часть"], default_value="Составная часть", readonly=True, disabled=True,
-    #                        enable_events=True, key="-LEVEL-")],
-    #              [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='-SS-', s=(5, 0)),  # spisok
-    #               sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='-KP-', s=(5, 0))]],
-    #             justification="c", element_justification="c"
-    #         )],
-    #         [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
-    #          sg.Button("Сохранить"),
-    #          sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0)),
-    #          sg.Button("Новое ТС"),
-    #          ]
-    #     ]
-    #     third_ts_window = sg.Window('AddThirdTsPage', third_page, resizable=True, element_justification="").Finalize()
-    #     while True:  # TSPage
-    #         event, values = third_ts_window.read()
-    #         # TSPage realisation
-    #         if event == "-REFR-":
-    #             self.get_ts_values(values)
-    #
-    #         elif event == "-ADDMORE-":
-    #             print("debug window 3")
-    #
-    #         elif event == "Сохранить":
-    #             third_ts_window.close()
-    #             print(values)
-    #             return values
-    #
-    #         elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
-    #             third_ts_window.close()
-    #             return 0
 
 
 class SpUi:
