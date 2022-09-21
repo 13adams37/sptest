@@ -191,9 +191,6 @@ class Pages:
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
-                    # if not master:
-                    #     table1.clear()
-                    #     print("deleting table1")
                     print("updating table1")
                 else:
                     page3.tsavailable = ["Составная часть"]
@@ -202,9 +199,6 @@ class Pages:
 
                     page3.addtspage(master=False, headername="Добавление 3-го уровня")
                     table.Update(table2)  # insert tsvalues into table2
-                    # if not master:
-                    #     table2.clear()
-                    #     print("deleting table2")
                     print("updating table2")
 
                 print("debug master")
@@ -216,16 +210,6 @@ class Pages:
                     self.addtswindow["partnumber"].update("", disabled=False)
 
             elif event == "Сохранить":
-                # ts_values = self.get_ts_values(values)
-                # self.tsdata.append(ts_values)  # extend or append?
-                # if self.tsdata != ts_values:
-                #     # self.tsdata += ts_values
-                #     self.tsdata.extend(ts_values)
-                # else:
-                #     print("you shall not pass")
-
-                # table1.extend(self.tsdata) if values["level"] == "Изделие" else table2.append(self.tsdata)
-
                 # push to db if master
                 if self.tsavailable == ["Элемент", "Составная часть"]:
                     print("save table1")
@@ -252,8 +236,8 @@ class Pages:
         table.append(values)
 
     def get_tsvalues(self, values):
-        allowed_list = ["dogovor", "act", "name", "model", "partnumber", "vendor", "serial1", "serial2", "uv", "rgg",
-                        "rggpp", "level", "ss", "kp"]
+        allowed_list = ["dogovor", "act", "name", "model", "partnumber", "vendor", "serial1", "serial2", "uv", "folder",
+                        "rgg", "rggpp", "level", "ss", "kp"]
         listed = []
 
         for value in values:
