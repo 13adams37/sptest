@@ -2,7 +2,7 @@
 # may be later :(
 import PySimpleGUI as sg
 
-NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
 
 
@@ -100,8 +100,8 @@ class Pages:
                 return 0
 
     def addtspage(self, master, headername):
-        headings = ['Дог.', 'Акт', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'РГГ', 'РГГ пп', 'П', 'Сек',
-                    'Кат.', 'Состав']
+        headings = ['Дог.', 'Акт', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'Фото', 'РГГ', 'РГГ пп',
+                    'П', 'Сек', 'Кат.', 'Состав']
         tabledata = [NULLLIST, ]
         addtspage = [
             [sg.Column(
@@ -131,8 +131,9 @@ class Pages:
                 , justification="r", element_justification="r"
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
-                [[sg.Checkbox("УФ", key='uv'), sg.Text('РГГ'), sg.InputText(key='rgg', visible=False),
-                  sg.FileBrowse(),
+                [[sg.Checkbox("УФ", key='uv'),
+                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True),
+                  sg.Text('РГГ'), sg.InputText(key='rgg', visible=False), sg.FileBrowse(),
                   sg.Text('РГГ пп'), sg.InputText(key='rggpp', s=(7, 0))]]
                 , justification="c")],
             [sg.Column(
@@ -226,12 +227,11 @@ class Pages:
                 # table1.extend(self.tsdata) if values["level"] == "Изделие" else table2.append(self.tsdata)
 
                 # push to db if master
-
-                if values["level"] == "Элемент":
-                    # put tsvalues (L2) into table1
+                if self.tsavailable == ["Элемент", "Составная часть"]:
+                    print("save table1")
                     self.insert_values_into_table(self.get_tsvalues(values), table1)
-                else:
-                    # put tsvalues (L3) into table2
+                if self.tsavailable == ["Составная часть"]:
+                    print("save table2")
                     self.insert_values_into_table(self.get_tsvalues(values), table2)
 
             elif event == "Новое ТС":
@@ -242,7 +242,7 @@ class Pages:
                 if values["level"] == "Изделие" and not master:
                     print("deleting table1")
                     table1.clear()
-                elif values["level"] == "Элемент" and not master:
+                if values["level"] == "Элемент" and not master:
                     print("deleting table2")
                     table2.clear()
                 self.addtswindow.close()
