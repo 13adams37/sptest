@@ -114,26 +114,26 @@ class Pages:
             )],
             [sg.Column(
                 [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='name', size=(45, 0)),
-                  sg.Checkbox("Save", k="-TSSAVE-")],
+                  sg.Checkbox("Сохр.", k="nameSAVE")],
                  # input + spisok. link model, vendor
                  [sg.Text('Модель'),
                   sg.InputCombo(["get from bd + kostil"], key='model', size=(45, 0)),
-                  sg.Checkbox("Сохр.", k="-MODELSAVE-")],
+                  sg.Checkbox("Сохр.", k="modelSAVE")],
                  # input, link tsname, vendor
-                 [sg.Text('Заводской номер'), sg.InputText(key='partnumber', enable_events=True),
-                  sg.Checkbox("б/н", k="nopart", enable_events=True)],  # mb add save button
+                 [sg.Text('Заводской номер'), sg.InputText(key='part', enable_events=True),
+                  sg.Checkbox("б/н", k="nopart", enable_events=True), sg.Checkbox("Сохр.", k="partSAVE")],
                  [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='vendor', size=(45, 0)),
-                  sg.Checkbox("Сохр.", k="-VENDORSAVE-")],
+                  sg.Checkbox("Сохр.", k="vendorSAVE")],
                  # input + spisok. link tsname, model
-                 [sg.Text('СЗЗ-1'), sg.InputText(key='serial1'), sg.Checkbox("Сохр.", k="-CZZAUTO-")],
+                 [sg.Text('СЗЗ-1'), sg.InputText(key='serial1'), sg.Checkbox("Сохр.", k="serial1SAVE")],
                  # locked, checkbox + nextint
                  [sg.Text('СЗЗ-2'), sg.InputText(key='serial2')]]
                 , justification="r", element_justification="r"
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
                 [[sg.Checkbox("УФ", key='uv'),
-                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True),
-                  sg.Text('РГГ'), sg.InputText(key='rgg', visible=False), sg.FileBrowse(),
+                  sg.Input(k="folder", visible=False), sg.FolderBrowse('Папка с фото', k='folder'),
+                  sg.Text('РГГ'), sg.Input(k='rgg', visible=False), sg.FileBrowse("Фото РГГ", k="rgg"),
                   sg.Text('РГГ пп'), sg.InputText(key='rggpp', s=(7, 0))]]
                 , justification="c")],
             [sg.Column(
@@ -165,6 +165,8 @@ class Pages:
         else:
             self.addtswindow["-ADDMORE-"].update(visible=False)
             self.addtswindow["-TABLE-"].update(visible=False)
+        if not master:
+            self.addtswindow["folder"].update(visible=False)
 
         while True:  # TSPage
             event, values = self.addtswindow.read()
@@ -201,13 +203,11 @@ class Pages:
                     table.Update(table2)  # insert tsvalues into table2
                     print("updating table2")
 
-                print("debug master")
-
             elif event == "nopart":
                 if values[event]:
-                    self.addtswindow["partnumber"].update("б/н", disabled=True)
+                    self.addtswindow["part"].update("б/н", disabled=True)
                 else:
-                    self.addtswindow["partnumber"].update("", disabled=False)
+                    self.addtswindow["part"].update("", disabled=False)
 
             elif event == "Сохранить":
                 # push to db if master
@@ -221,6 +221,56 @@ class Pages:
             elif event == "Новое ТС":
                 # clear fileds without checkboxes
                 print("new ts")
+                # print(values)
+                # self.get_savedvalues(values)
+
+                # tempvalues = values
+                # blockedlist = ['dogovor', 'act', 'serial2', '-TABLE-']
+                # savedvalues = []
+                # toblock = []
+                # for value in tempvalues:
+                #     if "SAVE" in value:
+                #         savedvalues.append(value)
+                #     elif value in blockedlist:
+                #         tempvalues.pop(value)
+                #     else:
+                #         toblock.append(value)
+                # for block in toblock:
+                #     if block in savedvalues:
+                #         self.addtswindow[toblock].update(value=False)
+                #     else:
+                #         self.addtswindow[toblock].update("")
+
+                whitelist = ['dogovor', 'act', 'serial2', 'level', 'ss', 'kp', '-TABLE-', 'folder0', 'rgg1', 'nopart']
+                passlist = []
+                savelist = ['name', 'model', 'part', 'vendor', 'serial1']
+                rmlist = []
+                for value in values:
+                    print(value)
+                    if "SAVE" not in value and value not in whitelist:
+                        rmlist.append(value)
+                print("rmlist1 =", rmlist)
+                # nopart and save
+                for item in savelist:
+                    # print("item =", item)
+                    if values[item+"SAVE"]:
+                        print("saving item =", item)
+                        rmlist.remove(item)
+                    print("not passed", item)
+
+                for item in rmlist:
+                    if type(values[item]) is bool:
+                        self.addtswindow[item].Update(False)
+                    else:
+                        self.addtswindow[item].Update('')
+                print(rmlist)
+                # delete table
+                if "Изделие" in self.tsavailable:
+                    table1.clear()
+                    table.Update("")
+                if self.tsavailable == ["Элемент", "Составная часть"]:
+                    table2.clear()
+                    table.Update("")
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Изделие" and not master:
@@ -231,6 +281,10 @@ class Pages:
                     table2.clear()
                 self.addtswindow.close()
                 break
+
+    def get_savedvalues(self, values):
+        allvalues = ['', '']
+        print(values)
 
     def insert_values_into_table(self, values, table):
         table.append(values)
