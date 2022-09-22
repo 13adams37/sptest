@@ -272,31 +272,32 @@ class Pages:
                     table.Update("")
 
             elif event == "Удалить":
-                test = []
                 pos = int(values["-TABLE-"][0])
-                tbl = table.Get()
 
-                print(pos)
-                print(tbl)
-                print(tbl[pos])
-                print(values)
+                if sg.PopupYesNo("Уверены что хотите удалить? ", no_titlebar=True,
+                                 auto_close_duration=5, auto_close=True) == "Yes":
+                    if "Изделие" in self.tsavailable:
+                        table1.pop(pos)
+                        table.Update(table1)
+                    if self.tsavailable == ["Элемент", "Составная часть"]:
+                        table2.pop(pos)
+                        table.Update(table2)
+                else:
+                    print("saved")
 
-                # confirm deletion, then delete
             elif event == "Редактировать":
                 pos = int(values["-TABLE-"][0])
                 tbl = table.Get()
-                # SAVE
                 slave = Pages()
                 slave.tsdata = tbl[pos]
-                slave.addtspage(master="slave", headername="fucking slave")
+                slave.addtspage(master="slave", headername="Редактирование элемента")
+
                 if "Изделие" in self.tsavailable:
                     table1[pos] = slave.tsdata
                     table.Update(table1)
                 if self.tsavailable == ["Элемент", "Составная часть"]:
                     table2[pos] = slave.tsdata
                     table.Update(table2)
-
-                # create new tswindow, without save checkboxes and newts buttons
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Изделие" and not master:
@@ -309,7 +310,6 @@ class Pages:
                 break
 
     def fun_slave(self):
-        # items = ['Null', 'Null', '1337LEET', '', '', '', '', '', False, '', '', '', 'Элемент', '', '', []]
         allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
                     'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']  # 16
         hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС', '-ADDMORE-']
@@ -318,7 +318,6 @@ class Pages:
         for element, toput in zip(allnames, self.tsdata):
             print(element, toput)
             self.addtswindow[element].update(toput)
-        # self.addtswindow['-TABLE-'].Update(self.tsdata)
 
     def insert_values_into_table(self, values, table):
         table.append(values)
