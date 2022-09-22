@@ -15,6 +15,8 @@ class Pages:
 
         self.dogovornumber = None
         self.actnumber = None
+        self.ss = None
+        self.kp = None
         self.tsdata = []
         # self.tabledata = None
         self.tsavailable = ["Изделие", "Элемент", "Составная часть"]
@@ -113,21 +115,19 @@ class Pages:
                 , justification="c"
             )],
             [sg.Column(
-                [[sg.Text('Наименование ТС'), sg.InputCombo(["get from bd + kostil"], key='name', size=(45, 0)),
+                [[sg.Text('Наименование ТС'), sg.InputCombo(["нужна БД"], key='name', size=(45, 0)),
                   sg.Checkbox("Сохр.", k="nameSAVE")],
                  # input + spisok. link model, vendor
-                 [sg.Text('Модель'),
-                  sg.InputCombo(["get from bd + kostil"], key='model', size=(45, 0)),
+                 [sg.Text('Модель'), sg.InputCombo(["нужна БД"], key='model', size=(45, 0)),
                   sg.Checkbox("Сохр.", k="modelSAVE")],
                  # input, link tsname, vendor
                  [sg.Text('Заводской номер'), sg.InputText(key='part', enable_events=True),
                   sg.Checkbox("б/н", k="nopart", enable_events=True), sg.Checkbox("Сохр.", k="partSAVE")],
-                 [sg.Text('Производитель'), sg.InputCombo(["get from bd + kostil"], key='vendor', size=(45, 0)),
+                 [sg.Text('Производитель'), sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0)),
                   sg.Checkbox("Сохр.", k="vendorSAVE")],
                  # input + spisok. link tsname, model
                  [sg.Text('СЗЗ-1'), sg.InputText(key='serial1'), sg.Checkbox("Сохр.", k="serial1SAVE")],
-                 # locked, checkbox + nextint
-                 [sg.Text('СЗЗ-2'), sg.InputText(key='serial2')]]
+                 [sg.Text('СЗЗ-2'), sg.InputText(key='serial2')]]  # count values
                 , justification="r", element_justification="r"
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
@@ -141,8 +141,10 @@ class Pages:
                   sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
                            default_value=self.tsavailable[0]),
                   sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(4, 2))],
-                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='ss', s=(5, 0)),  # spisok
-                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='kp', s=(5, 0))]],
+                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='ss',
+                                                           default_value=self.ss, s=(5, 0), enable_events=True),
+                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='kp',
+                                                           default_value=self.kp, s=(5, 0), enable_events=True)]],
                 justification="c", element_justification="c"
             )],
             [sg.Table(tabledata, headings=headings, justification='l', key="-TABLE-", visible=False,
@@ -183,13 +185,16 @@ class Pages:
                     self.addtswindow["-TABLE-"].update(visible=False)
             elif event == "-ADDMORE-":
                 # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
+                self.ss = self.addtswindow["ss"].Get()
+                self.kp = self.addtswindow["kp"].Get()
                 page2 = Pages()
                 page3 = Pages()
                 if values["level"] == "Изделие":
                     page2.tsavailable = ["Элемент", "Составная часть"]
                     page2.actnumber = self.actnumber
                     page2.dogovornumber = self.dogovornumber
-                    page2.tsdata = page3.tsdata
+                    page2.ss = self.ss
+                    page2.kp = self.kp
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
@@ -198,6 +203,8 @@ class Pages:
                     page3.tsavailable = ["Составная часть"]
                     page3.actnumber = self.actnumber
                     page3.dogovornumber = self.dogovornumber
+                    page3.ss = self.ss
+                    page3.kp = self.kp
 
                     page3.addtspage(master=False, headername="Добавление 3-го уровня")
                     table.Update(table2)  # insert tsvalues into table2
@@ -253,10 +260,17 @@ class Pages:
                 # nopart and save
                 for item in savelist:
                     # print("item =", item)
-                    if values[item+"SAVE"]:
+                    if values[item + "SAVE"]:
                         print("saving item =", item)
                         rmlist.remove(item)
                     print("not passed", item)
+
+                if values['nopart'] and values['partSAVE']:
+                    self.addtswindow["part"].update("б/н", disabled=True)
+                    # rmlist.remove('part')
+                elif values['nopart'] and not values['partSAVE']:
+                    self.addtswindow["part"].update("", disabled=False)
+                    self.addtswindow['nopart'].Update(False)
 
                 for item in rmlist:
                     if type(values[item]) is bool:
@@ -290,7 +304,7 @@ class Pages:
         table.append(values)
 
     def get_tsvalues(self, values):
-        allowed_list = ["dogovor", "act", "name", "model", "partnumber", "vendor", "serial1", "serial2", "uv", "folder",
+        allowed_list = ["dogovor", "act", "name", "model", "part", "vendor", "serial1", "serial2", "uv", "folder",
                         "rgg", "rggpp", "level", "ss", "kp"]
         listed = []
 
@@ -300,10 +314,10 @@ class Pages:
         if values["level"] == "Элемент" or "Изделие":
             temptable = []
             tables = self.addtswindow["-TABLE-"].Get()
-            for table in tables:
-                temptable.append(table)
-            print("temp table =", temptable)
-            listed.append(temptable)
+            # for table in tables:
+            #     temptable.append(table)
+            # print("temp table =", temptable)
+            listed.append(tables)
         print("listed =", listed)
         return listed
 
