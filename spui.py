@@ -148,7 +148,8 @@ class Pages:
                 justification="c", element_justification="c"
             )],
             [sg.Table(tabledata, headings=headings, justification='l', key="-TABLE-", visible=False,
-                      auto_size_columns=True, max_col_width=5)],
+                      auto_size_columns=True, max_col_width=5,
+                      right_click_menu=['&Right', ['Редактировать', 'Удалить']])],
             [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
              sg.Button("Сохранить"),
              sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0)),
@@ -170,20 +171,24 @@ class Pages:
         if not master:
             self.addtswindow["folder"].update(visible=False)
 
+        # fucking slaves get your ass back here
+        if master == "slave":
+            self.fun_slave()
+
         while True:  # TSPage
             event, values = self.addtswindow.read()
 
             if event == "-REFR-":
                 print(values["-TABLE-"])  # get a picked table element position
                 print(table.Get())
-            elif event == "level":
+            elif event == "level" and not master == "slave":
                 if values[event] == "Изделие" or values[event] == "Элемент":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
                 else:
                     self.addtswindow["-ADDMORE-"].update(visible=False)
                     self.addtswindow["-TABLE-"].update(visible=False)
-            elif event == "-ADDMORE-":
+            elif event == "-ADDMORE-" and not master == "slave":
                 # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
                 self.ss = self.addtswindow["ss"].Get()
                 self.kp = self.addtswindow["kp"].Get()
@@ -195,6 +200,7 @@ class Pages:
                     page2.dogovornumber = self.dogovornumber
                     page2.ss = self.ss
                     page2.kp = self.kp
+                    # page2.tsdata = page3.tsdata
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
@@ -218,38 +224,18 @@ class Pages:
 
             elif event == "Сохранить":
                 # push to db if master
-                if self.tsavailable == ["Элемент", "Составная часть"]:
-                    print("save table1")
-                    self.insert_values_into_table(self.get_tsvalues(values), table1)
-                if self.tsavailable == ["Составная часть"]:
-                    print("save table2")
-                    self.insert_values_into_table(self.get_tsvalues(values), table2)
+                if master == "slave":
+                    self.tsdata = self.get_tsvalues(values)
+                else:
+                    if self.tsavailable == ["Элемент", "Составная часть"]:
+                        print("save table1")
+                        self.insert_values_into_table(self.get_tsvalues(values), table1)
+                    if self.tsavailable == ["Составная часть"]:
+                        print("save table2")
+                        self.insert_values_into_table(self.get_tsvalues(values), table2)
 
             elif event == "Новое ТС":
-                # clear fileds without checkboxes
-                print("new ts")
-                # print(values)
-                # self.get_savedvalues(values)
-
-                # tempvalues = values
-                # blockedlist = ['dogovor', 'act', 'serial2', '-TABLE-']
-                # savedvalues = []
-                # toblock = []
-                # for value in tempvalues:
-                #     if "SAVE" in value:
-                #         savedvalues.append(value)
-                #     elif value in blockedlist:
-                #         tempvalues.pop(value)
-                #     else:
-                #         toblock.append(value)
-                # for block in toblock:
-                #     if block in savedvalues:
-                #         self.addtswindow[toblock].update(value=False)
-                #     else:
-                #         self.addtswindow[toblock].update("")
-
                 whitelist = ['dogovor', 'act', 'serial2', 'level', 'ss', 'kp', '-TABLE-', 'folder0', 'rgg1', 'nopart']
-                passlist = []
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1']
                 rmlist = []
                 for value in values:
@@ -257,9 +243,8 @@ class Pages:
                     if "SAVE" not in value and value not in whitelist:
                         rmlist.append(value)
                 print("rmlist1 =", rmlist)
-                # nopart and save
+
                 for item in savelist:
-                    # print("item =", item)
                     if values[item + "SAVE"]:
                         print("saving item =", item)
                         rmlist.remove(item)
@@ -286,6 +271,33 @@ class Pages:
                     table2.clear()
                     table.Update("")
 
+            elif event == "Удалить":
+                test = []
+                pos = int(values["-TABLE-"][0])
+                tbl = table.Get()
+
+                print(pos)
+                print(tbl)
+                print(tbl[pos])
+                print(values)
+
+                # confirm deletion, then delete
+            elif event == "Редактировать":
+                pos = int(values["-TABLE-"][0])
+                tbl = table.Get()
+                # SAVE
+                slave = Pages()
+                slave.tsdata = tbl[pos]
+                slave.addtspage(master="slave", headername="fucking slave")
+                if "Изделие" in self.tsavailable:
+                    table1[pos] = slave.tsdata
+                    table.Update(table1)
+                if self.tsavailable == ["Элемент", "Составная часть"]:
+                    table2[pos] = slave.tsdata
+                    table.Update(table2)
+
+                # create new tswindow, without save checkboxes and newts buttons
+
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Изделие" and not master:
                     print("deleting table1")
@@ -296,9 +308,17 @@ class Pages:
                 self.addtswindow.close()
                 break
 
-    def get_savedvalues(self, values):
-        allvalues = ['', '']
-        print(values)
+    def fun_slave(self):
+        # items = ['Null', 'Null', '1337LEET', '', '', '', '', '', False, '', '', '', 'Элемент', '', '', []]
+        allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+                    'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']  # 16
+        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС', '-ADDMORE-']
+        for element in hideitems:
+            self.addtswindow[element].Update(visible=False)
+        for element, toput in zip(allnames, self.tsdata):
+            print(element, toput)
+            self.addtswindow[element].update(toput)
+        # self.addtswindow['-TABLE-'].Update(self.tsdata)
 
     def insert_values_into_table(self, values, table):
         table.append(values)
@@ -314,10 +334,10 @@ class Pages:
         if values["level"] == "Элемент" or "Изделие":
             temptable = []
             tables = self.addtswindow["-TABLE-"].Get()
-            # for table in tables:
-            #     temptable.append(table)
-            # print("temp table =", temptable)
-            listed.append(tables)
+            for table in tables:
+                temptable.append(table)
+            print("temp table =", temptable)
+            listed.append(temptable)
         print("listed =", listed)
         return listed
 
