@@ -1,6 +1,7 @@
 # from dearpygui import *
 # may be later :(
 import PySimpleGUI as sg
+import db
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
@@ -132,7 +133,8 @@ class Pages:
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
                 [[sg.Checkbox("УФ", key='uv'),
-                  sg.Input(k="folder", visible=False), sg.FolderBrowse('Папка с фото', k='folder'),
+                  sg.Input(k="folder", visible=False),
+                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False),
                   sg.Text('РГГ'), sg.Input(k='rgg', visible=False), sg.FileBrowse("Фото РГГ", k="rgg"),
                   sg.Text('РГГ пп'), sg.InputText(key='rggpp', s=(7, 0))]]
                 , justification="c")],
@@ -168,8 +170,8 @@ class Pages:
         else:
             self.addtswindow["-ADDMORE-"].update(visible=False)
             self.addtswindow["-TABLE-"].update(visible=False)
-        if not master:
-            self.addtswindow["folder"].update(visible=False)
+        if master:
+            self.addtswindow["folder0"].update(visible=True)
 
         # fucking slaves get your ass back here
         if master == "slave":
@@ -179,8 +181,8 @@ class Pages:
             event, values = self.addtswindow.read()
 
             if event == "-REFR-":
-                print(values["-TABLE-"])  # get a picked table element position
                 print(table.Get())
+                print(len(table.Get()))
             elif event == "level" and not master == "slave":
                 if values[event] == "Изделие" or values[event] == "Элемент":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
@@ -200,7 +202,6 @@ class Pages:
                     page2.dogovornumber = self.dogovornumber
                     page2.ss = self.ss
                     page2.kp = self.kp
-                    # page2.tsdata = page3.tsdata
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
@@ -223,7 +224,6 @@ class Pages:
                     self.addtswindow["part"].update("", disabled=False)
 
             elif event == "Сохранить":
-                # push to db if master
                 if master == "slave":
                     self.tsdata = self.get_tsvalues(values)
                 else:
@@ -233,6 +233,9 @@ class Pages:
                     if self.tsavailable == ["Составная часть"]:
                         print("save table2")
                         self.insert_values_into_table(self.get_tsvalues(values), table2)
+                if master:
+                    baza = db.DataBase()
+                    baza.add(self.get_tsvalues(values))
 
             elif event == "Новое ТС":
                 whitelist = ['dogovor', 'act', 'serial2', 'level', 'ss', 'kp', '-TABLE-', 'folder0', 'rgg1', 'nopart']
@@ -291,13 +294,17 @@ class Pages:
                 slave = Pages()
                 slave.tsdata = tbl[pos]
                 slave.addtspage(master="slave", headername="Редактирование элемента")
-
-                if "Изделие" in self.tsavailable:
+                print("slave tsdata", slave.tsdata)
+                # if "Изделие" in self.tsavailable:
+                if values['level'] == "Изделие" and table1:
                     table1[pos] = slave.tsdata
                     table.Update(table1)
-                if self.tsavailable == ["Элемент", "Составная часть"]:
+                else:
                     table2[pos] = slave.tsdata
                     table.Update(table2)
+                # if self.tsavailable == ["Элемент", "Составная часть"]:
+                #     table2[pos] = slave.tsdata
+                #     table.Update(table2)
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Изделие" and not master:
@@ -312,7 +319,8 @@ class Pages:
     def fun_slave(self):
         allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
                     'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']  # 16
-        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС', '-ADDMORE-']
+        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС',
+                     '-ADDMORE-']
         for element in hideitems:
             self.addtswindow[element].Update(visible=False)
         for element, toput in zip(allnames, self.tsdata):
