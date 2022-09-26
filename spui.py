@@ -242,20 +242,15 @@ class Pages:
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1']
                 rmlist = []
                 for value in values:
-                    print(value)
                     if "SAVE" not in value and value not in whitelist:
                         rmlist.append(value)
-                print("rmlist1 =", rmlist)
 
                 for item in savelist:
                     if values[item + "SAVE"]:
-                        print("saving item =", item)
                         rmlist.remove(item)
-                    print("not passed", item)
 
                 if values['nopart'] and values['partSAVE']:
                     self.addtswindow["part"].update("б/н", disabled=True)
-                    # rmlist.remove('part')
                 elif values['nopart'] and not values['partSAVE']:
                     self.addtswindow["part"].update("", disabled=False)
                     self.addtswindow['nopart'].Update(False)
@@ -266,7 +261,6 @@ class Pages:
                     else:
                         self.addtswindow[item].Update('')
                 print(rmlist)
-                # delete table
                 if "Изделие" in self.tsavailable:
                     table1.clear()
                     table.Update("")
@@ -285,8 +279,6 @@ class Pages:
                     if self.tsavailable == ["Элемент", "Составная часть"]:
                         table2.pop(pos)
                         table.Update(table2)
-                else:
-                    print("saved")
 
             elif event == "Редактировать":
                 pos = int(values["-TABLE-"][0])
@@ -294,37 +286,29 @@ class Pages:
                 slave = Pages()
                 slave.tsdata = tbl[pos]
                 slave.addtspage(master="slave", headername="Редактирование элемента")
-                print("slave tsdata", slave.tsdata)
-                # if "Изделие" in self.tsavailable:
                 if values['level'] == "Изделие" and table1:
                     table1[pos] = slave.tsdata
                     table.Update(table1)
                 else:
                     table2[pos] = slave.tsdata
                     table.Update(table2)
-                # if self.tsavailable == ["Элемент", "Составная часть"]:
-                #     table2[pos] = slave.tsdata
-                #     table.Update(table2)
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Изделие" and not master:
-                    print("deleting table1")
                     table1.clear()
                 if values["level"] == "Элемент" and not master:
-                    print("deleting table2")
                     table2.clear()
                 self.addtswindow.close()
                 break
 
     def fun_slave(self):
         allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
-                    'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']  # 16
+                    'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']
         hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС',
                      '-ADDMORE-']
         for element in hideitems:
             self.addtswindow[element].Update(visible=False)
         for element, toput in zip(allnames, self.tsdata):
-            print(element, toput)
             self.addtswindow[element].update(toput)
 
     def insert_values_into_table(self, values, table):
@@ -343,9 +327,7 @@ class Pages:
             tables = self.addtswindow["-TABLE-"].Get()
             for table in tables:
                 temptable.append(table)
-            print("temp table =", temptable)
             listed.append(temptable)
-        print("listed =", listed)
         return listed
 
 
