@@ -5,6 +5,10 @@ import db
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
+fontbig = ("Arial", 24)
+fontbutton = ("Helvetica", 20)
+fontmid = ("Arial Baltic", 18)
+fontmidlow = ("Arial Baltic", 16)
 
 
 class Pages:
@@ -31,6 +35,7 @@ class Pages:
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
                        border_width=0,
+                       font=fontbig,
                        )],
             [sg.Button('Редактирование', key="-Edit-", enable_events=True,
                        expand_x=True,
@@ -39,9 +44,11 @@ class Pages:
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
                        border_width=0,
+                       font=fontbig
                        )]
         ]
         self.window = sg.Window('MainPage', mainpage, resizable=True).Finalize()
+        # self.window.Maximize()
 
     def addaddpage(self):
         addpage = [
@@ -51,32 +58,36 @@ class Pages:
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
                        border_width=0,
-                       pad=(30, 30))],
+                       pad=(30, 30),
+                       font=fontbig)],
             [sg.Button('Добавить проверенное ТС', key="-AddTs-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
                        border_width=0,
-                       pad=(30, 30))],
+                       pad=(30, 30),
+                       font=fontbig)],
             [sg.Button('Закрыть', key="-CloseAddPage-", enable_events=True,
                        expand_x=True,
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
                        border_width=0,
-                       pad=(30, 30))]
+                       pad=(30, 30),
+                       font=fontbig)]
         ]
         self.addwindow = sg.Window('AddPage', addpage, resizable=True, element_justification="c").Finalize()
+        # self.addwindow.Maximize()
 
     @property
     def credentialspage(self):
         self.actnumber, self.dogovornumber = None, None  # reset
         credentials = [
-            [sg.Text('Договор'), sg.InputCombo(["get bd"], key='-DOGOVOR-')],
-            [sg.Text('Акт'), sg.InputCombo(["get bd"], key='-AKT-')],
-            [sg.Button('Без номеров', size=(10, 0), button_color='gray', p=(20, 0)),
-             sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0)),
-             sg.Cancel('Отмена', button_color='red')]
+            [sg.Text('Договор', font=fontbig), sg.InputCombo(["get bd"], key='-DOGOVOR-', font=fontmid)],
+            [sg.Text('Акт', font=fontbig), sg.InputCombo(["get bd"], key='-AKT-', font=fontmid)],
+            [sg.Button('Без номеров', font=fontbutton, size=(10, 0), button_color='gray', p=(20, 0)),
+             sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0), font=fontbutton),
+             sg.Cancel('Отмена', button_color='red', font=fontbutton)]
         ]
         self.credentialswindow = sg.Window('DogovorPage', credentials, resizable=True,
                                            element_justification="c").Finalize()
@@ -86,13 +97,16 @@ class Pages:
                 if values['-DOGOVOR-'] and values['-AKT-'] != '':
                     self.dogovornumber = values["-DOGOVOR-"]
                     self.actnumber = values["-AKT-"]
-                else:
-                    sg.Window('Ошибочка', [[sg.T('Заполните поля!')], [sg.Button('Понял')]],
-                              element_justification="c", no_titlebar=True).read(close=True)
                     self.credentialswindow.close()
-                    return 0
-                self.credentialswindow.close()
-                return 1
+                    return 1
+                else:
+                    self.credentialswindow["-DOGOVOR-"].Update("")
+                    self.credentialswindow["-AKT-"].Update("")
+                    sg.Window('Ошибочка',
+                              [[sg.T('Заполните поля!', font=fontbig)], [sg.Button('Понял', font=fontbutton)]],
+                              element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
+                              auto_close_duration=5).read(close=True)
+
             elif event == "Без номеров":
                 self.dogovornumber = "Null"
                 self.actnumber = "Null"
@@ -108,60 +122,71 @@ class Pages:
         tabledata = [NULLLIST, ]
         addtspage = [
             [sg.Column(
-                [[sg.Text('Договор'),
-                  sg.InputText(key='dogovor', default_text=self.dogovornumber, disabled=True, s=(5, 0),
-                               text_color="black"),
-                  sg.Text('Акт'), sg.InputText(key='act', default_text=self.actnumber, disabled=True, s=(5, 0),
-                                               text_color="black")]]
+                [[sg.Text('Договор', font=fontmid),
+                  sg.InputText(key='dogovor', default_text=self.dogovornumber, disabled=True, s=(7, 5),
+                               text_color="black", font=fontmidlow),
+                  sg.Text('Акт', font=fontmid), sg.InputText(key='act', default_text=self.actnumber, disabled=True,
+                                                             s=(7, 5), text_color="black", font=fontmidlow)]]
                 , justification="c"
             )],
             [sg.Column(
-                [[sg.Text('Наименование ТС'), sg.InputCombo(["нужна БД"], key='name', size=(45, 0)),
-                  sg.Checkbox("Сохр.", k="nameSAVE")],
+                [[sg.Text('Наименование ТС', font=fontmid),
+                  sg.InputCombo(["нужна БД"], key='name', size=(45, 0), font=fontmid),
+                  sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
                  # input + spisok. link model, vendor
-                 [sg.Text('Модель'), sg.InputCombo(["нужна БД"], key='model', size=(45, 0)),
-                  sg.Checkbox("Сохр.", k="modelSAVE")],
+                 [sg.Text('Модель', font=fontmid), sg.InputCombo(["нужна БД"], key='model', size=(45, 0), font=fontmid),
+                  sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid)],
                  # input, link tsname, vendor
-                 [sg.Text('Заводской номер'), sg.InputText(key='part', enable_events=True),
-                  sg.Checkbox("б/н", k="nopart", enable_events=True), sg.Checkbox("Сохр.", k="partSAVE")],
-                 [sg.Text('Производитель'), sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0)),
-                  sg.Checkbox("Сохр.", k="vendorSAVE")],
+                 [sg.Text('Заводской номер', font=fontmid), sg.InputCombo(["нужна БД"], key='part', enable_events=True,
+                                                                          font=fontmid, s=(39, 0)),
+                  sg.Checkbox("б/н", k="nopart", enable_events=True, font=fontmid),
+                  sg.Checkbox("Сохр.", k="partSAVE", font=fontmid)],
+                 [sg.Text('Производитель', font=fontmid),
+                  sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0), font=fontmid),
+                  sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid)],
                  # input + spisok. link tsname, model
-                 [sg.Text('СЗЗ-1'), sg.InputText(key='serial1'), sg.Checkbox("Сохр.", k="serial1SAVE")],
-                 [sg.Text('СЗЗ-2'), sg.InputText(key='serial2')]]  # count values
-                , justification="r", element_justification="r"
+                 [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
+                  sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid)],
+                 [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(10, 0), font=fontmid)]]  # count values
+                , justification="c", element_justification="r"
             )],  # locked + kol-vo objects in LEVEL
             [sg.Column(
-                [[sg.Checkbox("УФ", key='uv'),
+                [[sg.Checkbox("УФ", font=fontmid, key='uv'),
                   sg.Input(k="folder", visible=False),
-                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False),
-                  sg.Text('РГГ'), sg.Input(k='rgg', visible=False), sg.FileBrowse("Фото РГГ", k="rgg"),
-                  sg.Text('РГГ пп'), sg.InputText(key='rggpp', s=(7, 0))]]
+                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
+                  sg.Text('РГГ', font=fontmid), sg.Input(k='rgg', visible=False),
+                  sg.FileBrowse("Фото РГГ", k="rgg", font=fontmidlow),
+                  sg.Text('РГГ пп', font=fontmid), sg.InputText(key='rggpp', s=(7, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(
-                [[sg.Text('Признак (уровень)'),
+                [[sg.Text('Признак (уровень)', font=fontmid),
                   sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
-                           default_value=self.tsavailable[0]),
-                  sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(4, 2))],
-                 [sg.Text('Степень секретности'), sg.Combo(["С", "СС"], readonly=True, key='ss',
-                                                           default_value=self.ss, s=(5, 0), enable_events=True),
-                  sg.Text('Категория помещения'), sg.Combo(["1", "2"], readonly=True, key='kp',
-                                                           default_value=self.kp, s=(5, 0), enable_events=True)]],
+                           default_value=self.tsavailable[0], font=fontmidlow),
+                  sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(3, 1), font=fontmid)],
+                 [sg.Text('Степень секретности', font=fontmid), sg.Combo(["С", "СС"], readonly=True, key='ss',
+                                                                         default_value=self.ss, s=(5, 0),
+                                                                         enable_events=True, font=fontmidlow),
+                  sg.Text('Категория помещения', font=fontmid), sg.Combo(["1", "2"], readonly=True, key='kp',
+                                                                         default_value=self.kp, s=(5, 0),
+                                                                         enable_events=True, font=fontmidlow)]],
                 justification="c", element_justification="c"
             )],
-            [sg.Table(tabledata, headings=headings, justification='l', key="-TABLE-", visible=False,
-                      auto_size_columns=True, max_col_width=5,
-                      right_click_menu=['&Right', ['Редактировать', 'Удалить']])],
-            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True),
-             sg.Button("Сохранить"),
-             sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0)),
-             sg.Button("Новое ТС"),
+            [sg.Table(tabledata, headings=headings, justification='c', key="-TABLE-", visible=False,
+                      auto_size_columns=True, expand_x=True, expand_y=True,
+                      right_click_menu=['&Right', ['Редактировать', 'Удалить']], font=fontmid, header_font=fontmidlow)],
+            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True,
+                     font=fontbutton),
+             sg.Button("Сохранить", font=fontbutton),
+             sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0), font=fontbutton),
+             sg.Button("Новое ТС", font=fontbutton),
              ]
         ]
         self.addtswindow = sg.Window(headername, addtspage, resizable=True,
                                      element_justification="").Finalize()
+        self.addtswindow.Maximize()
         table = self.addtswindow['-TABLE-']
         tabledata.clear()
+        table.Update(tabledata)
         if self.tsavailable == ["Составная часть"]:
             self.addtswindow['level'].update()
         if "Изделие" in self.tsavailable or "Элемент" in self.tsavailable:
@@ -180,10 +205,11 @@ class Pages:
         while True:  # TSPage
             event, values = self.addtswindow.read()
 
-            if event == "-REFR-":
-                print(table.Get())
-                print(len(table.Get()))
-            elif event == "level" and not master == "slave":
+            # if event == "-REFR-":
+            # print(table.Get())
+            # print(len(table.Get()))
+
+            if event == "level" and not master == "slave":
                 if values[event] == "Изделие" or values[event] == "Элемент":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
@@ -271,8 +297,7 @@ class Pages:
             elif event == "Удалить":
                 pos = int(values["-TABLE-"][0])
 
-                if sg.PopupYesNo("Уверены что хотите удалить? ", no_titlebar=True,
-                                 auto_close_duration=5, auto_close=True) == "Yes":
+                if sg.PopupYesNo("Уверены что хотите удалить? ", auto_close_duration=7, auto_close=True) == "Yes":
                     if "Изделие" in self.tsavailable:
                         table1.pop(pos)
                         table.Update(table1)
@@ -300,6 +325,9 @@ class Pages:
                     table2.clear()
                 self.addtswindow.close()
                 break
+
+            else:
+                print("А ааа а кто это сделал?", event)
 
     def fun_slave(self):
         allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
