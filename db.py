@@ -41,4 +41,5 @@ class DataBase:
 
 if __name__ == '__main__':
     test = DataBase()
+    # db.table("_default").truncate()
     # print(db.all())

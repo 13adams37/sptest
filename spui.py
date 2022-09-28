@@ -2,6 +2,7 @@
 # may be later :(
 import PySimpleGUI as sg
 import db
+from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
@@ -10,6 +11,13 @@ fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 
+names = ['Roberta', 'Kylie', 'Jenny', 'Helen',
+         'Andrea', 'Meredith', 'Deborah', 'Pauline',
+         'Belinda', 'Wendy']
+tablenames = ['Roberta', 'Kylie', 'Jenny', 'Helen',
+         'Andrea', 'Meredith', 'Deborah', 'Pauline',
+         'Belinda', 'Wendy']
+
 
 class Pages:
     def __init__(self):
@@ -17,6 +25,9 @@ class Pages:
         self.addtswindow = None
         self.addwindow = None
         self.credentialswindow = None
+        self.viewwindow = None
+        self.addkomerswindow = None
+        self.edittswidow = None
 
         self.dogovornumber = None
         self.actnumber = None
@@ -24,11 +35,11 @@ class Pages:
         self.kp = None
         self.tsdata = []
         # self.tabledata = None
-        self.tsavailable = ["Изделие", "Элемент", "Составная часть"]
+        self.tsavailable = ["Комплект", "Составная часть", "Элемент"]
 
     def mainpage(self):
         mainpage = [
-            [sg.Button('Добавление', key="-Add-", enable_events=True,
+            [sg.Button('Добавление ТС', key="-Add-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
                        pad=(30, 30),
@@ -37,7 +48,7 @@ class Pages:
                        border_width=0,
                        font=fontbig,
                        )],
-            [sg.Button('Редактирование', key="-Edit-", enable_events=True,
+            [sg.Button('Редактирование/просмотр ТС', key="-Edit-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
                        pad=(30, 30),
@@ -68,7 +79,7 @@ class Pages:
                        border_width=0,
                        pad=(30, 30),
                        font=fontbig)],
-            [sg.Button('Закрыть', key="-CloseAddPage-", enable_events=True,
+            [sg.Button('Назад', key="-CloseAddPage-", enable_events=True,
                        expand_x=True,
                        s=(30, 5),
                        button_color=(sg.theme_text_color(), sg.theme_background_color()),
@@ -77,7 +88,6 @@ class Pages:
                        font=fontbig)]
         ]
         self.addwindow = sg.Window('AddPage', addpage, resizable=True, element_justification="c").Finalize()
-        # self.addwindow.Maximize()
 
     @property
     def credentialspage(self):
@@ -131,18 +141,19 @@ class Pages:
             )],
             [sg.Column(
                 [[sg.Text('Наименование ТС', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='name', size=(45, 0), font=fontmid),
+                  sg.InputCombo(names, key='name', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
                  # input + spisok. link model, vendor
-                 [sg.Text('Модель', font=fontmid), sg.InputCombo(["нужна БД"], key='model', size=(45, 0), font=fontmid),
+                 [sg.Text('Модель', font=fontmid),
+                  sg.InputCombo(["нужна БД"], key='model', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid)],
                  # input, link tsname, vendor
-                 [sg.Text('Заводской номер', font=fontmid), sg.InputCombo(["нужна БД"], key='part', enable_events=True,
-                                                                          font=fontmid, s=(39, 0)),
+                 [sg.Text('Заводской номер', font=fontmid),
+                  sg.InputCombo(["нужна БД"], key='part', enable_events=True, font=fontmid, s=(39, 0)),
                   sg.Checkbox("б/н", k="nopart", enable_events=True, font=fontmid),
                   sg.Checkbox("Сохр.", k="partSAVE", font=fontmid)],
                  [sg.Text('Производитель', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0), font=fontmid),
+                  sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid)],
                  # input + spisok. link tsname, model
                  [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
@@ -154,8 +165,9 @@ class Pages:
                 [[sg.Checkbox("УФ", font=fontmid, key='uv'),
                   sg.Input(k="folder", visible=False),
                   sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
-                  sg.Text('РГГ', font=fontmid), sg.Input(k='rgg', visible=False),
-                  sg.FileBrowse("Фото РГГ", k="rgg", font=fontmidlow),
+                  # sg.Text('РГГ', font=fontmid),
+                  sg.Input(k='rgg', visible=False),
+                  sg.FileBrowse("РГГ", k="rgg", font=fontmidlow),
                   sg.Text('РГГ пп', font=fontmid), sg.InputText(key='rggpp', s=(7, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(
@@ -166,18 +178,19 @@ class Pages:
                  [sg.Text('Степень секретности', font=fontmid), sg.Combo(["С", "СС"], readonly=True, key='ss',
                                                                          default_value=self.ss, s=(5, 0),
                                                                          enable_events=True, font=fontmidlow),
-                  sg.Text('Категория помещения', font=fontmid), sg.Combo(["1", "2"], readonly=True, key='kp',
+                  sg.Text('Категория помещения', font=fontmid), sg.Combo(["2", "3"], readonly=True, key='kp',
                                                                          default_value=self.kp, s=(5, 0),
                                                                          enable_events=True, font=fontmidlow)]],
                 justification="c", element_justification="c"
             )],
             [sg.Table(tabledata, headings=headings, justification='c', key="-TABLE-", visible=False,
                       auto_size_columns=True, expand_x=True, expand_y=True,
-                      right_click_menu=['&Right', ['Редактировать', 'Удалить']], font=fontmid, header_font=fontmidlow)],
+                      right_click_menu=['&Right', ['Редактировать', 'Удалить']], font=fontmidlow,
+                      header_font=fontmidlow)],
             [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True,
                      font=fontbutton),
              sg.Button("Сохранить", font=fontbutton),
-             sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0), font=fontbutton),
+             # sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0), font=fontbutton),
              sg.Button("Новое ТС", font=fontbutton),
              ]
         ]
@@ -187,14 +200,23 @@ class Pages:
         table = self.addtswindow['-TABLE-']
         tabledata.clear()
         table.Update(tabledata)
-        if self.tsavailable == ["Составная часть"]:
+        # remove first 2 cols in table
+        displaycolumns = deepcopy(headings)
+        displaycolumns.remove('Дог.')
+        displaycolumns.remove('Акт')
+        table.ColumnsToDisplay = displaycolumns
+        table.Widget.configure(displaycolumns=displaycolumns)
+
+        if self.tsavailable == ["Элемент"]:
             self.addtswindow['level'].update()
-        if "Изделие" in self.tsavailable or "Элемент" in self.tsavailable:
+
+        if "Комплект" in self.tsavailable or "Составная часть" in self.tsavailable:
             self.addtswindow["-ADDMORE-"].update(visible=True)
             self.addtswindow["-TABLE-"].update(visible=True)
         else:
             self.addtswindow["-ADDMORE-"].update(visible=False)
             self.addtswindow["-TABLE-"].update(visible=False)
+
         if master:
             self.addtswindow["folder0"].update(visible=True)
 
@@ -202,28 +224,26 @@ class Pages:
         if master == "slave":
             self.fun_slave()
 
+        print("prep done")
         while True:  # TSPage
             event, values = self.addtswindow.read()
 
-            # if event == "-REFR-":
-            # print(table.Get())
-            # print(len(table.Get()))
-
             if event == "level" and not master == "slave":
-                if values[event] == "Изделие" or values[event] == "Элемент":
+                if values[event] == "Комплект" or values[event] == "Составная часть":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
                 else:
                     self.addtswindow["-ADDMORE-"].update(visible=False)
                     self.addtswindow["-TABLE-"].update(visible=False)
+
             elif event == "-ADDMORE-" and not master == "slave":
                 # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
                 self.ss = self.addtswindow["ss"].Get()
                 self.kp = self.addtswindow["kp"].Get()
                 page2 = Pages()
                 page3 = Pages()
-                if values["level"] == "Изделие":
-                    page2.tsavailable = ["Элемент", "Составная часть"]
+                if values["level"] == "Комплект":
+                    page2.tsavailable = ["Составная часть", "Элемент"]
                     page2.actnumber = self.actnumber
                     page2.dogovornumber = self.dogovornumber
                     page2.ss = self.ss
@@ -231,17 +251,15 @@ class Pages:
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
-                    print("updating table1")
                 else:
-                    page3.tsavailable = ["Составная часть"]
+                    page3.tsavailable = ["Элемент"]
                     page3.actnumber = self.actnumber
                     page3.dogovornumber = self.dogovornumber
                     page3.ss = self.ss
                     page3.kp = self.kp
 
                     page3.addtspage(master=False, headername="Добавление 3-го уровня")
-                    table.Update(table2)  # insert tsvalues into table2
-                    print("updating table2")
+                    table.Update(table2)
 
             elif event == "nopart":
                 if values[event]:
@@ -253,11 +271,9 @@ class Pages:
                 if master == "slave":
                     self.tsdata = self.get_tsvalues(values)
                 else:
-                    if self.tsavailable == ["Элемент", "Составная часть"]:
-                        print("save table1")
+                    if self.tsavailable == ["Составная часть", "Элемент"]:
                         self.insert_values_into_table(self.get_tsvalues(values), table1)
-                    if self.tsavailable == ["Составная часть"]:
-                        print("save table2")
+                    if self.tsavailable == ["Элемент"]:
                         self.insert_values_into_table(self.get_tsvalues(values), table2)
                 if master:
                     baza = db.DataBase()
@@ -286,11 +302,11 @@ class Pages:
                         self.addtswindow[item].Update(False)
                     else:
                         self.addtswindow[item].Update('')
-                print(rmlist)
-                if "Изделие" in self.tsavailable:
+
+                if "Комплект" in self.tsavailable:
                     table1.clear()
                     table.Update("")
-                if self.tsavailable == ["Элемент", "Составная часть"]:
+                if self.tsavailable == ["Составная часть", "Элемент"]:
                     table2.clear()
                     table.Update("")
 
@@ -298,10 +314,10 @@ class Pages:
                 pos = int(values["-TABLE-"][0])
 
                 if sg.PopupYesNo("Уверены что хотите удалить? ", auto_close_duration=7, auto_close=True) == "Yes":
-                    if "Изделие" in self.tsavailable:
+                    if "Комплект" in self.tsavailable:
                         table1.pop(pos)
                         table.Update(table1)
-                    if self.tsavailable == ["Элемент", "Составная часть"]:
+                    if self.tsavailable == ["Составная часть", "Элемент"]:
                         table2.pop(pos)
                         table.Update(table2)
 
@@ -311,7 +327,7 @@ class Pages:
                 slave = Pages()
                 slave.tsdata = tbl[pos]
                 slave.addtspage(master="slave", headername="Редактирование элемента")
-                if values['level'] == "Изделие" and table1:
+                if values['level'] == "Комплект" and table1:
                     table1[pos] = slave.tsdata
                     table.Update(table1)
                 else:
@@ -319,15 +335,12 @@ class Pages:
                     table.Update(table2)
 
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
-                if values["level"] == "Изделие" and not master:
+                if values["level"] == "Комплект" and not master:
                     table1.clear()
                 if values["level"] == "Элемент" and not master:
                     table2.clear()
                 self.addtswindow.close()
                 break
-
-            else:
-                print("А ааа а кто это сделал?", event)
 
     def fun_slave(self):
         allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
@@ -350,13 +363,37 @@ class Pages:
         for value in values:
             if value in allowed_list:
                 listed.append(values[value])
-        if values["level"] == "Элемент" or "Изделие":
+        if values["level"] == "Составная часть" or "Комплект":
             temptable = []
             tables = self.addtswindow["-TABLE-"].Get()
             for table in tables:
                 temptable.append(table)
             listed.append(temptable)
         return listed
+
+    def add_komers_page(self):
+        pass
+
+    def edit_ts_page(self):
+        editlayout = [
+            [
+                sg.Column([
+                    [sg.T]
+                ])
+            ],
+        ]
+        pass
+        # show all
+        # search everywhere
+        # search by act / dogovor
+        # search by name
+        # search by model
+        # search by (contains part)
+        # search by vendor
+        # search by szz1
+        # search by rg
+
+        # multiple search?
 
 
 class SpUi:
@@ -389,6 +426,10 @@ class SpUi:
                         pages.window.UnHide()
                         pages.addwindow.close()
                         break
+
+            elif event == "-Edit-":
+                # view + edit
+                pass
 
             elif event == sg.WIN_CLOSED:
                 break
