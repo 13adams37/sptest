@@ -1,22 +1,19 @@
 # from dearpygui import *
 # may be later :(
+import json
+
 import PySimpleGUI as sg
 import db
 from copy import deepcopy
 
-NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
 fontbig = ("Arial", 24)
 fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 
-names = ['Roberta', 'Kylie', 'Jenny', 'Helen',
-         'Andrea', 'Meredith', 'Deborah', 'Pauline',
-         'Belinda', 'Wendy']
-tablenames = ['Roberta', 'Kylie', 'Jenny', 'Helen',
-         'Andrea', 'Meredith', 'Deborah', 'Pauline',
-         'Belinda', 'Wendy']
+baza = db.DataBase()
 
 
 class Pages:
@@ -29,12 +26,8 @@ class Pages:
         self.addkomerswindow = None
         self.edittswidow = None
 
-        self.dogovornumber = None
-        self.actnumber = None
-        self.ss = None
-        self.kp = None
+        self.object = None
         self.tsdata = []
-        # self.tabledata = None
         self.tsavailable = ["Комплект", "Составная часть", "Элемент"]
 
     def mainpage(self):
@@ -63,14 +56,14 @@ class Pages:
 
     def addaddpage(self):
         addpage = [
-            [sg.Button('Добавить организацию', key="-AddKomers-", enable_events=True,
-                       expand_x=True,
-                       expand_y=True,
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       pad=(30, 30),
-                       font=fontbig)],
+            # [sg.Button('Добавить организацию', key="-AddKomers-", enable_events=True,
+            #            expand_x=True,
+            #            expand_y=True,
+            #            s=(30, 5),
+            #            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+            #            border_width=0,
+            #            pad=(30, 30),
+            #            font=fontbig)],
             [sg.Button('Добавить проверенное ТС', key="-AddTs-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
@@ -93,33 +86,30 @@ class Pages:
     def credentialspage(self):
         self.actnumber, self.dogovornumber = None, None  # reset
         credentials = [
-            [sg.Text('Договор', font=fontbig), sg.InputCombo(["get bd"], key='-DOGOVOR-', font=fontmid)],
-            [sg.Text('Акт', font=fontbig), sg.InputCombo(["get bd"], key='-AKT-', font=fontmid)],
-            [sg.Button('Без номеров', font=fontbutton, size=(10, 0), button_color='gray', p=(20, 0)),
-             sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0), font=fontbutton),
+            [sg.Text('Объект', font=fontbig), sg.InputCombo(["get bd"], key='-OBJECT-', font=fontmid)],
+            # [sg.Button('Без номеров', font=fontbutton, size=(10, 0), button_color='gray', p=(20, 0)),
+            [sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0), font=fontbutton),
              sg.Cancel('Отмена', button_color='red', font=fontbutton)]
         ]
-        self.credentialswindow = sg.Window('DogovorPage', credentials, resizable=True,
+        self.credentialswindow = sg.Window('Выбор объекта', credentials, resizable=True,
                                            element_justification="c").Finalize()
         while True:
             event, values = self.credentialswindow.read()
+
             if event == "Дальше":
-                if values['-DOGOVOR-'] and values['-AKT-'] != '':
-                    self.dogovornumber = values["-DOGOVOR-"]
-                    self.actnumber = values["-AKT-"]
+                if values['-OBJECT-'] != '':
+                    self.object = values["-OBJECT-"]
                     self.credentialswindow.close()
                     return 1
                 else:
-                    self.credentialswindow["-DOGOVOR-"].Update("")
-                    self.credentialswindow["-AKT-"].Update("")
+                    self.credentialswindow["-OBJECT-"].Update("")
                     sg.Window('Ошибочка',
-                              [[sg.T('Заполните поля!', font=fontbig)], [sg.Button('Понял', font=fontbutton)]],
+                              [[sg.T('Заполните поле!', font=fontbig)], [sg.Button('Понял', font=fontbutton)]],
                               element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
                               auto_close_duration=5).read(close=True)
 
             elif event == "Без номеров":
-                self.dogovornumber = "Null"
-                self.actnumber = "Null"
+                self.object = "Null"
                 self.credentialswindow.close()
                 return 1
             elif event in ('Отмена', sg.WIN_CLOSED):
@@ -127,21 +117,18 @@ class Pages:
                 return 0
 
     def addtspage(self, master, headername):
-        headings = ['Дог.', 'Акт', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'Фото', 'РГГ', 'РГГ пп',
+        headings = ['Объект', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'Фото', 'РГГ', 'РГГ пп',
                     'П', 'Сек', 'Кат.', 'Состав']
         tabledata = [NULLLIST, ]
         addtspage = [
             [sg.Column(
-                [[sg.Text('Договор', font=fontmid),
-                  sg.InputText(key='dogovor', default_text=self.dogovornumber, disabled=True, s=(7, 5),
-                               text_color="black", font=fontmidlow),
-                  sg.Text('Акт', font=fontmid), sg.InputText(key='act', default_text=self.actnumber, disabled=True,
-                                                             s=(7, 5), text_color="black", font=fontmidlow)]]
+                [[sg.Text('Объект', font=fontmid), sg.InputText(key='object', default_text=self.object, disabled=True,
+                                                                s=(7, 5), text_color="black", font=fontmidlow)]]
                 , justification="c"
             )],
             [sg.Column(
                 [[sg.Text('Наименование ТС', font=fontmid),
-                  sg.InputCombo(names, key='name', size=(45, 0), font=fontmid, enable_events=True),
+                  sg.InputCombo(["нужна БД"], key='name', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
                  # input + spisok. link model, vendor
                  [sg.Text('Модель', font=fontmid),
@@ -175,19 +162,20 @@ class Pages:
                   sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
                            default_value=self.tsavailable[0], font=fontmidlow),
                   sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(3, 1), font=fontmid)],
-                 [sg.Text('Степень секретности', font=fontmid), sg.Combo(["С", "СС"], readonly=True, key='ss',
-                                                                         default_value=self.ss, s=(5, 0),
-                                                                         enable_events=True, font=fontmidlow),
-                  sg.Text('Категория помещения', font=fontmid), sg.Combo(["2", "3"], readonly=True, key='kp',
-                                                                         default_value=self.kp, s=(5, 0),
-                                                                         enable_events=True, font=fontmidlow)]],
+                 # [sg.Text('Степень секретности', font=fontmid), sg.Combo(["С", "СС"], readonly=True, key='ss',
+                 #                                                         default_value=self.ss, s=(5, 0),
+                 #                                                         enable_events=True, font=fontmidlow),
+                 #  sg.Text('Категория помещения', font=fontmid), sg.Combo(["2", "3"], readonly=True, key='kp',
+                 #                                                         default_value=self.kp, s=(5, 0),
+                 #                                                         enable_events=True, font=fontmidlow)]
+                 ],
                 justification="c", element_justification="c"
             )],
             [sg.Table(tabledata, headings=headings, justification='c', key="-TABLE-", visible=False,
                       auto_size_columns=True, expand_x=True, expand_y=True,
                       right_click_menu=['&Right', ['Редактировать', 'Удалить']], font=fontmidlow,
-                      header_font=fontmidlow)],
-            [sg.Text('Закрыть', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True,
+                      header_font=fontmidlow, enable_events=True)],
+            [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True,
                      font=fontbutton),
              sg.Button("Сохранить", font=fontbutton),
              # sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0), font=fontbutton),
@@ -200,10 +188,9 @@ class Pages:
         table = self.addtswindow['-TABLE-']
         tabledata.clear()
         table.Update(tabledata)
-        # remove first 2 cols in table
+        # remove cols in table
         displaycolumns = deepcopy(headings)
-        displaycolumns.remove('Дог.')
-        displaycolumns.remove('Акт')
+        displaycolumns.remove('Объект')
         table.ColumnsToDisplay = displaycolumns
         table.Widget.configure(displaycolumns=displaycolumns)
 
@@ -224,7 +211,11 @@ class Pages:
         if master == "slave":
             self.fun_slave()
 
-        print("prep done")
+        if master == "editor":
+            self.fun_vieweditor()
+            print(self.tsdata[12])
+            table.Update(self.tsdata[12])
+
         while True:  # TSPage
             event, values = self.addtswindow.read()
 
@@ -238,25 +229,18 @@ class Pages:
 
             elif event == "-ADDMORE-" and not master == "slave":
                 # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
-                self.ss = self.addtswindow["ss"].Get()
-                self.kp = self.addtswindow["kp"].Get()
                 page2 = Pages()
                 page3 = Pages()
+
                 if values["level"] == "Комплект":
                     page2.tsavailable = ["Составная часть", "Элемент"]
-                    page2.actnumber = self.actnumber
-                    page2.dogovornumber = self.dogovornumber
-                    page2.ss = self.ss
-                    page2.kp = self.kp
+                    page2.object = self.object
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
                     table.Update(table1)
                 else:
                     page3.tsavailable = ["Элемент"]
-                    page3.actnumber = self.actnumber
-                    page3.dogovornumber = self.dogovornumber
-                    page3.ss = self.ss
-                    page3.kp = self.kp
+                    page3.object = self.object
 
                     page3.addtspage(master=False, headername="Добавление 3-го уровня")
                     table.Update(table2)
@@ -268,7 +252,7 @@ class Pages:
                     self.addtswindow["part"].update("", disabled=False)
 
             elif event == "Сохранить":
-                if master == "slave":
+                if master == "slave" or master == "editor":
                     self.tsdata = self.get_tsvalues(values)
                 else:
                     if self.tsavailable == ["Составная часть", "Элемент"]:
@@ -276,13 +260,13 @@ class Pages:
                     if self.tsavailable == ["Элемент"]:
                         self.insert_values_into_table(self.get_tsvalues(values), table2)
                 if master:
-                    baza = db.DataBase()
                     baza.add(self.get_tsvalues(values))
 
             elif event == "Новое ТС":
-                whitelist = ['dogovor', 'act', 'serial2', 'level', 'ss', 'kp', '-TABLE-', 'folder0', 'rgg1', 'nopart']
+                whitelist = ['object', 'serial2', 'level', '-TABLE-', 'folder0', 'rgg1', 'nopart']
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1']
                 rmlist = []
+
                 for value in values:
                     if "SAVE" not in value and value not in whitelist:
                         rmlist.append(value)
@@ -327,6 +311,7 @@ class Pages:
                 slave = Pages()
                 slave.tsdata = tbl[pos]
                 slave.addtspage(master="slave", headername="Редактирование элемента")
+
                 if values['level'] == "Комплект" and table1:
                     table1[pos] = slave.tsdata
                     table.Update(table1)
@@ -337,14 +322,14 @@ class Pages:
             elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
                 if values["level"] == "Комплект" and not master:
                     table1.clear()
-                if values["level"] == "Элемент" and not master:
+                if values["level"] == "Составная часть" and not master:
                     table2.clear()
                 self.addtswindow.close()
                 break
 
     def fun_slave(self):
-        allnames = ['dogovor', 'act', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
-                    'rgg', 'rggpp', 'level', 'ss', 'kp', '-TABLE-']
+        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+                    'rgg', 'rggpp', 'level', '-TABLE-']
         hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС',
                      '-ADDMORE-']
         for element in hideitems:
@@ -352,12 +337,22 @@ class Pages:
         for element, toput in zip(allnames, self.tsdata):
             self.addtswindow[element].update(toput)
 
+    def fun_vieweditor(self):
+        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+                    'rgg', 'rggpp', 'level', '-TABLE-']
+        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'vendorSAVE', 'serial1SAVE', 'Новое ТС']
+        for element in hideitems:
+            self.addtswindow[element].Update(visible=False)
+        for element, toput in zip(allnames, self.tsdata):
+            self.addtswindow[element].update(toput)
+            print("element =", element, "toput =", toput)
+
     def insert_values_into_table(self, values, table):
         table.append(values)
 
     def get_tsvalues(self, values):
-        allowed_list = ["dogovor", "act", "name", "model", "part", "vendor", "serial1", "serial2", "uv", "folder",
-                        "rgg", "rggpp", "level", "ss", "kp"]
+        allowed_list = ["object", "name", "model", "part", "vendor", "serial1", "serial2", "uv", "folder",
+                        "rgg", "rggpp", "level"]
         listed = []
 
         for value in values:
@@ -374,26 +369,112 @@ class Pages:
     def add_komers_page(self):
         pass
 
-    def edit_ts_page(self):
+    def edit_ts_page(self, headername):
+        input_width = 80
+        num_items_to_show = 4
+
+        choices = baza.get_index_names("names")
+        print(choices)
+        # choices = sorted([elem.__name__ for elem in sg.Element.__subclasses__()])
+
         editlayout = [
             [
                 sg.Column([
-                    [sg.T]
-                ])
+                    [sg.T("Search", font=fontbig)],
+                    [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                    [sg.pin(sg.Col(
+                        [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
+                                     select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                        key='-BOX-CONTAINER-', pad=(0, 0)))]
+                ], justification="c", element_justification="c")
             ],
+            [
+                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                        enable_events=True, expand_x=True),
+                sg.Submit("Открыть", key="-OPEN-", font=fontbutton),
+            ]
         ]
-        pass
-        # show all
-        # search everywhere
-        # search by act / dogovor
+
+        self.edittswidow = sg.Window(headername, editlayout, resizable=True, return_keyboard_events=True,
+                                     element_justification="").Finalize()
+        self.edittswidow.Maximize()
+
+        list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
+        # store listbox element for easier access and to get to docstrings
+        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+
+        while True:
+            event, values = self.edittswidow.read()
+
+            if event == "-OPEN-":
+                # print(values)
+                # print(values["-BOX-"])
+                temp = []
+                temp2 = []
+                obj = baza.get_by_id(prediction_ids[sel_item])
+                editor = Pages()
+                # tablo = []
+                if obj["table"]:
+                    for z in obj["table"]:
+                        if z["table"]:
+                            for v in z["table"]:
+                                temp2.append(list(v.values()))
+                        z["table"] = temp2.copy()
+                        temp2.clear()
+                        temp.append(list(z.values()))
+                obj["table"] = temp
+
+                editor.tsdata = list(obj.values())
+                editor.addtspage(master="editor", headername="vieweditor")
+                print(editor.tsdata)
+
+            elif event == "-CLOSE-":
+                self.edittswidow.close()
+                break
+
+            # pressing down arrow will trigger event -IN- then aftewards event Down:40
+            elif event.startswith('Escape'):
+                self.edittswidow['-IN-'].update('')
+            elif event.startswith('Down') and len(prediction_list):
+                sel_item = (sel_item + 1) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            elif event.startswith('Up') and len(prediction_list):
+                sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            elif event == '\r':
+                if len(values['-BOX-']) > 0:
+                    self.edittswidow['-IN-'].update(value=values['-BOX-'])
+            elif event == '-IN-':
+                text = values['-IN-'].lower()
+                if text == input_text:
+                    continue
+                else:
+                    input_text = text
+                prediction_list = []
+                prediction_ids = []
+                if text:
+                    # prediction_list = [item.value for item in choices if item.value.lower().startswith(text)]
+                    prediction_list = [item[1] for item in choices if item[1].lower().__contains__(text)]  # text
+                    prediction_ids = [item[0] for item in choices if item[1].lower().__contains__(text)]  # text
+
+                list_element.update(values=prediction_list)
+                sel_item = 0
+                list_element.update(set_to_index=sel_item)
+
+            elif event == '-BOX-':
+                self.edittswidow['-IN-'].update(value=values['-BOX-'])
+
+        self.edittswidow.close()
+        # search by object
         # search by name
         # search by model
-        # search by (contains part)
+        # search by part
         # search by vendor
         # search by szz1
         # search by rg
 
-        # multiple search?
+        # найти, выбрать (сохранить context=DatumInContext(value=), десериализация в list, открытие окна addts,
+        # сохранение возвращаемого значения (tsdata), изменение элемента.
 
 
 class SpUi:
@@ -418,9 +499,9 @@ class SpUi:
                             table2.clear()
 
                         pages.addwindow.UnHide()
-                    elif event == "-AddKomers-":
-                        # Добавление огранизации
-                        pass
+                    # elif event == "-AddKomers-":
+                    #     # Добавление огранизации
+                    #     pass
 
                     elif event == sg.WIN_CLOSED or event == "-CloseAddPage-":
                         pages.window.UnHide()
@@ -429,9 +510,18 @@ class SpUi:
 
             elif event == "-Edit-":
                 # view + edit
-                pass
+                pages.window.Hide()
+                pages.edit_ts_page("Редактирование")
+
+                pages.window.UnHide()
 
             elif event == sg.WIN_CLOSED:
                 break
             # mainpage event, values
         pages.window.close()
+
+        # TODO Добавить функцию просмотра и редактирования ТС из базы
+        # TODO Реализовать разные методы поиска ТС
+
+        # TODO Реализовать метод вывода всех УНИКАЛЬНЫХ названий, моделей, вендоров и СЗЗ.
+        # TODO Реализовать функцию автозаполнения (из примера autocompleteTest.py) полей "имя", "модель", "вендор"
