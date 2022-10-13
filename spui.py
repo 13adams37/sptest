@@ -14,6 +14,7 @@ fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 
 baza = db.DataBase()
+tdb = db.db
 
 
 class Pages:
@@ -108,17 +109,18 @@ class Pages:
                               element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
                               auto_close_duration=5).read(close=True)
 
-            elif event == "Без номеров":
-                self.object = "Null"
-                self.credentialswindow.close()
-                return 1
+            # elif event == "Без номеров":
+            #     self.object = "Null"
+            #     self.credentialswindow.close()
+            #     return 1
             elif event in ('Отмена', sg.WIN_CLOSED):
                 self.credentialswindow.close()
                 return 0
 
     def addtspage(self, master, headername):
+        global table1, table2
         headings = ['Объект', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'Фото', 'РГГ', 'РГГ пп',
-                    'П', 'Сек', 'Кат.', 'Состав']
+                    'П', 'Состав']
         tabledata = [NULLLIST, ]
         addtspage = [
             [sg.Column(
@@ -130,11 +132,9 @@ class Pages:
                 [[sg.Text('Наименование ТС', font=fontmid),
                   sg.InputCombo(["нужна БД"], key='name', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
-                 # input + spisok. link model, vendor
                  [sg.Text('Модель', font=fontmid),
                   sg.InputCombo(["нужна БД"], key='model', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid)],
-                 # input, link tsname, vendor
                  [sg.Text('Заводской номер', font=fontmid),
                   sg.InputCombo(["нужна БД"], key='part', enable_events=True, font=fontmid, s=(39, 0)),
                   sg.Checkbox("б/н", k="nopart", enable_events=True, font=fontmid),
@@ -142,17 +142,15 @@ class Pages:
                  [sg.Text('Производитель', font=fontmid),
                   sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid)],
-                 # input + spisok. link tsname, model
                  [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
                   sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid)],
                  [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(10, 0), font=fontmid)]]  # count values
                 , justification="c", element_justification="r"
-            )],  # locked + kol-vo objects in LEVEL
+            )],
             [sg.Column(
                 [[sg.Checkbox("УФ", font=fontmid, key='uv'),
                   sg.Input(k="folder", visible=False),
                   sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
-                  # sg.Text('РГГ', font=fontmid),
                   sg.Input(k='rgg', visible=False),
                   sg.FileBrowse("РГГ", k="rgg", font=fontmidlow),
                   sg.Text('РГГ пп', font=fontmid), sg.InputText(key='rggpp', s=(7, 0), font=fontmid)]]
@@ -178,11 +176,10 @@ class Pages:
             [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="left", expand_x=True,
                      font=fontbutton),
              sg.Button("Сохранить", font=fontbutton),
-             # sg.Submit('Обновить', size=(10, 0), k="-REFR-", button_color='gray', p=(20, 0), font=fontbutton),
              sg.Button("Новое ТС", font=fontbutton),
              ]
         ]
-        self.addtswindow = sg.Window(headername, addtspage, resizable=True,
+        self.addtswindow = sg.Window(headername, addtspage, resizable=True, return_keyboard_events=True,
                                      element_justification="").Finalize()
         self.addtswindow.Maximize()
         table = self.addtswindow['-TABLE-']
@@ -213,8 +210,11 @@ class Pages:
 
         if master == "editor":
             self.fun_vieweditor()
-            print(self.tsdata[12])
             table.Update(self.tsdata[12])
+            if self.tsavailable == ["Комплект", "Составная часть", "Элемент"]:
+                table1 = self.tsdata[12]
+            if self.tsavailable == ["Составная часть", "Элемент"]:
+                table2 = self.tsdata[12]
 
         while True:  # TSPage
             event, values = self.addtswindow.read()
@@ -259,7 +259,7 @@ class Pages:
                         self.insert_values_into_table(self.get_tsvalues(values), table1)
                     if self.tsavailable == ["Элемент"]:
                         self.insert_values_into_table(self.get_tsvalues(values), table2)
-                if master:
+                if master == True:  # ♂oh shit im sorry♂
                     baza.add(self.get_tsvalues(values))
 
             elif event == "Новое ТС":
@@ -310,16 +310,26 @@ class Pages:
                 tbl = table.Get()
                 slave = Pages()
                 slave.tsdata = tbl[pos]
-                slave.addtspage(master="slave", headername="Редактирование элемента")
+                if values['level'] == "Комплект":
+                    slave.tsavailable = ["Составная часть", "Элемент"]
+                else:
+                    slave.tsavailable = ["Элемент"]
 
-                if values['level'] == "Комплект" and table1:
+                if master == "editor":
+                    slave.addtspage(master="editor", headername="Редактирование элемента")
+                else:
+                    slave.addtspage(master="slave", headername="Редактирование элемента")
+
+                if slave.tsavailable == ["Составная часть", "Элемент"]:
+                    print("processing table1")
                     table1[pos] = slave.tsdata
                     table.Update(table1)
-                else:
+                if slave.tsavailable == ["Элемент"]:
+                    print("processing table2")
                     table2[pos] = slave.tsdata
                     table.Update(table2)
 
-            elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-":
+            elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-" or event.startswith('Escape'):
                 if values["level"] == "Комплект" and not master:
                     table1.clear()
                 if values["level"] == "Составная часть" and not master:
@@ -345,7 +355,6 @@ class Pages:
             self.addtswindow[element].Update(visible=False)
         for element, toput in zip(allnames, self.tsdata):
             self.addtswindow[element].update(toput)
-            print("element =", element, "toput =", toput)
 
     def insert_values_into_table(self, values, table):
         table.append(values)
@@ -369,18 +378,40 @@ class Pages:
     def add_komers_page(self):
         pass
 
+    def dict_2_list(self, dict_obj):
+        temp, temp2 = [], []
+        if dict_obj["table"]:
+            for z in dict_obj["table"]:
+                if z["table"]:
+                    for v in z["table"]:
+                        temp2.append(list(v.values()))
+                z["table"] = temp2.copy()
+                temp2.clear()
+                temp.append(list(z.values()))
+        dict_obj["table"] = temp
+        return list(dict_obj.values())
+
     def edit_ts_page(self, headername):
+        def myFunc(e):
+            return e[1]
         input_width = 80
-        num_items_to_show = 4
+        num_items_to_show = 20
 
         choices = baza.get_index_names("names")
-        print(choices)
-        # choices = sorted([elem.__name__ for elem in sg.Element.__subclasses__()])
+        choices.sort(key=myFunc)
 
         editlayout = [
             [
                 sg.Column([
-                    [sg.T("Search", font=fontbig)],
+                    [sg.Radio("Объект", "rad0", k='objects', enable_events=True, font=fontbig),
+                     sg.Radio("Название", "rad0", k='names', default=True, enable_events=True, font=fontbig),
+                     sg.Radio("Модель", "rad0", k="models", enable_events=True, font=fontbig),
+                     sg.Radio("Серийный номер", "rad0", k="parts", enable_events=True, font=fontbig),
+                     sg.Radio("Производитель", "rad0", k="vendors", enable_events=True, font=fontbig),
+                     sg.Radio("СЗЗ", "rad0", k="serials", enable_events=True, font=fontbig)],
+                    [sg.T("         ")],
+                    [sg.T("ПОИСК ТС", font=fontbig)],
+                    [sg.T("         ")],
                     [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
                     [sg.pin(sg.Col(
                         [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
@@ -406,27 +437,13 @@ class Pages:
         while True:
             event, values = self.edittswidow.read()
 
-            if event == "-OPEN-":
-                # print(values)
-                # print(values["-BOX-"])
-                temp = []
-                temp2 = []
+            if event == "-OPEN-" and values["-IN-"]:
                 obj = baza.get_by_id(prediction_ids[sel_item])
                 editor = Pages()
-                # tablo = []
-                if obj["table"]:
-                    for z in obj["table"]:
-                        if z["table"]:
-                            for v in z["table"]:
-                                temp2.append(list(v.values()))
-                        z["table"] = temp2.copy()
-                        temp2.clear()
-                        temp.append(list(z.values()))
-                obj["table"] = temp
-
-                editor.tsdata = list(obj.values())
-                editor.addtspage(master="editor", headername="vieweditor")
-                print(editor.tsdata)
+                editor.tsdata = self.dict_2_list(obj)
+                editor.object = editor.tsdata[0]
+                editor.addtspage(master="editor", headername="Редактирование и просмотр ТС")
+                baza.update_element(prediction_ids[sel_item], editor.tsdata)
 
             elif event == "-CLOSE-":
                 self.edittswidow.close()
@@ -453,9 +470,9 @@ class Pages:
                 prediction_list = []
                 prediction_ids = []
                 if text:
-                    # prediction_list = [item.value for item in choices if item.value.lower().startswith(text)]
-                    prediction_list = [item[1] for item in choices if item[1].lower().__contains__(text)]  # text
-                    prediction_ids = [item[0] for item in choices if item[1].lower().__contains__(text)]  # text
+                    prediction_list = [f"{item[1]} {baza.get_display_values(item[0])}"
+                                       for item in choices if item[1].lower().__contains__(text)]  # text
+                    prediction_ids = [item[0] for item in choices if item[1].lower().__contains__(text)]  # ids
 
                 list_element.update(values=prediction_list)
                 sel_item = 0
@@ -464,17 +481,11 @@ class Pages:
             elif event == '-BOX-':
                 self.edittswidow['-IN-'].update(value=values['-BOX-'])
 
-        self.edittswidow.close()
-        # search by object
-        # search by name
-        # search by model
-        # search by part
-        # search by vendor
-        # search by szz1
-        # search by rg
+            elif event in ("objects", "names", "models", "parts", "vendors", "serials"):
+                choices = baza.get_index_names(event)
+                choices.sort(key=myFunc)
 
-        # найти, выбрать (сохранить context=DatumInContext(value=), десериализация в list, открытие окна addts,
-        # сохранение возвращаемого значения (tsdata), изменение элемента.
+        self.edittswidow.close()
 
 
 class SpUi:
