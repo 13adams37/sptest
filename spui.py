@@ -1,13 +1,17 @@
 # from dearpygui import *
 # may be later :(
 import json
+from typing import List
 
 import PySimpleGUI as sg
 import db
+import MSWord
 from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
+last_event = ""
+# choices_name, choices_model, choices_part, choices_vendor = [], [], [], []
 fontbig = ("Arial", 24)
 fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
@@ -26,10 +30,13 @@ class Pages:
         self.viewwindow = None
         self.addkomerswindow = None
         self.edittswidow = None
+        self.exportwordwindow = None
 
         self.object = None
         self.tsdata = []
         self.tsavailable = ["Комплект", "Составная часть", "Элемент"]
+        self.choices_name, self.choices_model, self.choices_part, self.choices_vendor, self.predictions_list = [], [], [], [], []
+        self.input_text, self.last_event = '', ''
 
     def mainpage(self):
         mainpage = [
@@ -43,6 +50,15 @@ class Pages:
                        font=fontbig,
                        )],
             [sg.Button('Редактирование/просмотр ТС', key="-Edit-", enable_events=True,
+                       expand_x=True,
+                       expand_y=True,
+                       pad=(30, 30),
+                       s=(30, 5),
+                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                       border_width=0,
+                       font=fontbig
+                       )],
+            [sg.Button('Экспорт в Word', key="-Export-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
                        pad=(30, 30),
@@ -85,15 +101,16 @@ class Pages:
 
     @property
     def credentialspage(self):
-        self.actnumber, self.dogovornumber = None, None  # reset
         credentials = [
-            [sg.Text('Объект', font=fontbig), sg.InputCombo(["get bd"], key='-OBJECT-', font=fontmid)],
-            # [sg.Button('Без номеров', font=fontbutton, size=(10, 0), button_color='gray', p=(20, 0)),
-            [sg.Submit('Дальше', size=(15, 0), button_color='green', p=(40, 0), font=fontbutton),
+            [sg.Text('Объект', font=fontbig)],
+            [sg.Input(key='-OBJECT-', font=fontbig, enable_events=True, s=(15, 0))],
+            [sg.Submit('Дальше', size=(15, 0), button_color='green', font=fontbutton),
              sg.Cancel('Отмена', button_color='red', font=fontbutton)]
         ]
         self.credentialswindow = sg.Window('Выбор объекта', credentials, resizable=True,
-                                           element_justification="c").Finalize()
+                                           element_justification="c")
+        self.credentialswindow.Finalize()
+        self.credentialswindow['-OBJECT-'].SetFocus(True)
         while True:
             event, values = self.credentialswindow.read()
 
@@ -119,9 +136,11 @@ class Pages:
 
     def addtspage(self, master, headername):
         global table1, table2
-        headings = ['Объект', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'УФ', 'Фото', 'РГГ', 'РГГ пп',
+        sel_item = 0
+        headings = ['Объект', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'Кол-во', 'УФ', 'РГГ', 'РГГ пп',
                     'П', 'Состав']
         tabledata = [NULLLIST, ]
+        predictions_list = []
         addtspage = [
             [sg.Column(
                 [[sg.Text('Объект', font=fontmid), sg.InputText(key='object', default_text=self.object, disabled=True,
@@ -130,42 +149,65 @@ class Pages:
             )],
             [sg.Column(
                 [[sg.Text('Наименование ТС', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='name', size=(45, 0), font=fontmid, enable_events=True),
+                  sg.Input(key='name', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
+
+                 [sg.pin(sg.Col(
+                     [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXname-',
+                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                     key='-CONTAINERname-', pad=(105, 0), visible=False))],
+
                  [sg.Text('Модель', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='model', size=(45, 0), font=fontmid, enable_events=True),
+                  sg.Input(key='model', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid)],
+
+                 [sg.pin(sg.Col(
+                     [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXmodel-',
+                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                     key='-CONTAINERmodel-', pad=(105, 0), visible=False, justification='c'))],
+
                  [sg.Text('Заводской номер', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='part', enable_events=True, font=fontmid, s=(39, 0)),
+                  sg.Input(key='part', enable_events=True, font=fontmid, s=(39, 0)),
                   sg.Checkbox("б/н", k="nopart", enable_events=True, font=fontmid),
                   sg.Checkbox("Сохр.", k="partSAVE", font=fontmid)],
+
+                 [sg.pin(sg.Col(
+                     [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXpart-',
+                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                     key='-CONTAINERpart-', pad=(105, 0), visible=False, justification='c'))],
+
                  [sg.Text('Производитель', font=fontmid),
-                  sg.InputCombo(["нужна БД"], key='vendor', size=(45, 0), font=fontmid, enable_events=True),
+                  sg.Input(key='vendor', size=(45, 0), font=fontmid, enable_events=True),
                   sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid)],
+
+                 [sg.pin(sg.Col(
+                     [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXvendor-',
+                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                     key='-CONTAINERvendor-', pad=(105, 0), visible=False, justification='c'))],
+
                  [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
                   sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid)],
-                 [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(10, 0), font=fontmid)]]  # count values
+                 [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(3, 0), font=fontmid),
+                  sg.Text('Кол-во', font=fontmid), sg.InputText(default_text="1", key='amount', font=fontmid, s=(3, 0))]
+                 ]
+                # count values
                 , justification="c", element_justification="r"
             )],
             [sg.Column(
                 [[sg.Checkbox("УФ", font=fontmid, key='uv'),
-                  sg.Input(k="folder", visible=False),
-                  sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
-                  sg.Input(k='rgg', visible=False),
-                  sg.FileBrowse("РГГ", k="rgg", font=fontmidlow),
-                  sg.Text('РГГ пп', font=fontmid), sg.InputText(key='rggpp', s=(7, 0), font=fontmid)]]
+                  # sg.Input(k="folder", visible=False),
+                  # sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
+                  sg.Text('РГ', font=fontmid),
+                  sg.Input(k='rgg', enable_events=True, font=fontmid, s=(10, 0)),
+                  sg.Checkbox("Сохр.", k="rggSAVE", font=fontmid),
+                  # sg.FileBrowse("РГГ", k="rgg", font=fontmidlow),
+                  sg.Text('РГ пп', font=fontmid), sg.InputText(key='rggpp', s=(5, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(
                 [[sg.Text('Признак (уровень)', font=fontmid),
                   sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
                            default_value=self.tsavailable[0], font=fontmidlow),
                   sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(3, 1), font=fontmid)],
-                 # [sg.Text('Степень секретности', font=fontmid), sg.Combo(["С", "СС"], readonly=True, key='ss',
-                 #                                                         default_value=self.ss, s=(5, 0),
-                 #                                                         enable_events=True, font=fontmidlow),
-                 #  sg.Text('Категория помещения', font=fontmid), sg.Combo(["2", "3"], readonly=True, key='kp',
-                 #                                                         default_value=self.kp, s=(5, 0),
-                 #                                                         enable_events=True, font=fontmidlow)]
                  ],
                 justification="c", element_justification="c"
             )],
@@ -182,6 +224,9 @@ class Pages:
         self.addtswindow = sg.Window(headername, addtspage, resizable=True, return_keyboard_events=True,
                                      element_justification="").Finalize()
         self.addtswindow.Maximize()
+        self.addtswindow['name'].SetFocus(True)
+        # self.addtswindow.bind('<FocusIn>', '+FOCUS IN+')
+        self.get_choices()
         table = self.addtswindow['-TABLE-']
         tabledata.clear()
         table.Update(tabledata)
@@ -201,9 +246,6 @@ class Pages:
             self.addtswindow["-ADDMORE-"].update(visible=False)
             self.addtswindow["-TABLE-"].update(visible=False)
 
-        if master:
-            self.addtswindow["folder0"].update(visible=True)
-
         # fucking slaves get your ass back here
         if master == "slave":
             self.fun_slave()
@@ -215,11 +257,61 @@ class Pages:
                 table1 = self.tsdata[12]
             if self.tsavailable == ["Составная часть", "Элемент"]:
                 table2 = self.tsdata[12]
+            self.last_event = "name"
+
+        def make_predictions(index, container):
+            choices = eval(f"self.choices_{index}")
+            text = values[index].lower()
+            if text == self.input_text:
+                pass
+            else:
+                self.input_text = text
+                self.predictions_list = []
+                if text:
+                    self.predictions_list = [item for item in choices if item.lower().__contains__(text)]
+
+                list_element.update(values=self.predictions_list)
+                sel_item = 0
+                list_element.update(set_to_index=sel_item)
+
+            if len(self.predictions_list) > 0:
+                self.addtswindow[container].update(visible=True)
+            else:
+                self.addtswindow[container].update(visible=False)
+                self.addtswindow[f'-BOX{index}-'].update('')
 
         while True:  # TSPage
             event, values = self.addtswindow.read()
 
-            if event == "level" and not master == "slave":
+            if event == sg.WIN_CLOSED:
+                self.addtswindow.close()
+                break
+            if event == "-CloseAddTsPage-" or event.startswith('Escape'):
+                if values["level"] == "Комплект" and not master:
+                    table1.clear()
+                if values["level"] == "Составная часть" and not master:
+                    table2.clear()
+                self.addtswindow.close()
+                break
+
+            elif event.startswith('Down') and len(self.predictions_list):
+                sel_item = (sel_item + 1) % len(self.predictions_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            elif event.startswith('Up') and len(self.predictions_list):
+                sel_item = (sel_item + (len(self.predictions_list) - 1)) % len(self.predictions_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+            elif event == '\r' and self.last_event:
+                if len(values[f'-BOX{self.last_event}-']) > 0:
+                    self.addtswindow[self.last_event].update(value=values[f'-BOX{self.last_event}-'][0])
+                    self.addtswindow[f'-CONTAINER{self.last_event}-'].update(visible=False)
+
+            elif event in ('name', 'model', 'part', 'vendor'):
+                self.last_event = event
+                list_element: sg.Listbox = self.addtswindow.Element(f'-BOX{event}-')
+                make_predictions(event, f'-CONTAINER{event}-')
+
+            elif event == "level" and not master == "slave":
                 if values[event] == "Комплект" or values[event] == "Составная часть":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
@@ -263,8 +355,8 @@ class Pages:
                     baza.add(self.get_tsvalues(values))
 
             elif event == "Новое ТС":
-                whitelist = ['object', 'serial2', 'level', '-TABLE-', 'folder0', 'rgg1', 'nopart']
-                savelist = ['name', 'model', 'part', 'vendor', 'serial1']
+                whitelist = ['object', 'serial2', 'level', '-TABLE-', 'nopart', 'amount']
+                savelist = ['name', 'model', 'part', 'vendor', 'serial1', 'rgg']
                 rmlist = []
 
                 for value in values:
@@ -329,28 +421,26 @@ class Pages:
                     table2[pos] = slave.tsdata
                     table.Update(table2)
 
-            elif event == sg.WIN_CLOSED or event == "-CloseAddTsPage-" or event.startswith('Escape'):
-                if values["level"] == "Комплект" and not master:
-                    table1.clear()
-                if values["level"] == "Составная часть" and not master:
-                    table2.clear()
-                self.addtswindow.close()
-                break
-
     def fun_slave(self):
-        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
                     'rgg', 'rggpp', 'level', '-TABLE-']
-        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'Новое ТС',
+        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'nopart', 'vendorSAVE', 'serial1SAVE', 'rggSAVE', 'Новое ТС',
                      '-ADDMORE-']
         for element in hideitems:
             self.addtswindow[element].Update(visible=False)
         for element, toput in zip(allnames, self.tsdata):
             self.addtswindow[element].update(toput)
 
+    def get_choices(self):
+        self.choices_name = baza.get_unique_index_names('names')
+        self.choices_part = baza.get_unique_index_names('parts')
+        self.choices_model = baza.get_unique_index_names('models')
+        self.choices_vendor = baza.get_unique_index_names('vendors')
+
     def fun_vieweditor(self):
-        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+        allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
                     'rgg', 'rggpp', 'level', '-TABLE-']
-        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'vendorSAVE', 'serial1SAVE', 'Новое ТС']
+        hideitems = ['nameSAVE', 'modelSAVE', 'partSAVE', 'vendorSAVE', 'serial1SAVE', 'rggSAVE', 'Новое ТС']
         for element in hideitems:
             self.addtswindow[element].Update(visible=False)
         for element, toput in zip(allnames, self.tsdata):
@@ -360,7 +450,7 @@ class Pages:
         table.append(values)
 
     def get_tsvalues(self, values):
-        allowed_list = ["object", "name", "model", "part", "vendor", "serial1", "serial2", "uv", "folder",
+        allowed_list = ["object", "name", "model", "part", "vendor", "serial1", "serial2", 'amount', "uv",
                         "rgg", "rggpp", "level"]
         listed = []
 
@@ -394,6 +484,7 @@ class Pages:
     def edit_ts_page(self, headername):
         def myFunc(e):
             return e[1]
+
         input_width = 80
         num_items_to_show = 20
 
@@ -438,14 +529,20 @@ class Pages:
             event, values = self.edittswidow.read()
 
             if event == "-OPEN-" and values["-IN-"]:
-                obj = baza.get_by_id(prediction_ids[sel_item])
-                editor = Pages()
-                editor.tsdata = self.dict_2_list(obj)
-                editor.object = editor.tsdata[0]
-                editor.addtspage(master="editor", headername="Редактирование и просмотр ТС")
-                baza.update_element(prediction_ids[sel_item], editor.tsdata)
+                if prediction_ids:
+                    obj = baza.get_by_id(prediction_ids[sel_item])
+                    editor = Pages()
+                    editor.tsdata = self.dict_2_list(obj)
+                    editor.object = editor.tsdata[0]
+                    editor.addtspage(master="editor", headername="Редактирование и просмотр ТС")
+                    baza.update_element(prediction_ids[sel_item], editor.tsdata)
+                    # for radio in ("objects", "names", "models", "parts", "vendors", "serials"):
+                    #     if values[radio]:
+                    #         choices = baza.get_index_names(radio)
+                    #         choices.sort(key=myFunc)
+                    # not needed
 
-            elif event == "-CLOSE-":
+            elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.edittswidow.close()
                 break
 
@@ -487,6 +584,45 @@ class Pages:
 
         self.edittswidow.close()
 
+    def word_output_page(self, headername):
+        mswordlib = MSWord.Word()
+        editlayout = [
+            [
+                sg.Column([
+                    [sg.T("         ")],
+                    [sg.T("Экспорт в Word", font=fontbig)],
+                    [sg.T("         ")],
+                    [sg.Input(size=(30, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)]
+                ], justification="c", element_justification="c")
+            ],
+            [
+                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                        enable_events=True, expand_x=True),
+                sg.Submit("Экспортировать", key="-OPEN-", font=fontbutton),
+            ]
+        ]
+
+        self.exportwordwindow = sg.Window(headername, editlayout, resizable=True, return_keyboard_events=True,
+                                          element_justification="").Finalize()
+        self.exportwordwindow.Maximize()
+
+        while True:
+            event, values = self.exportwordwindow.read()
+
+            if event == '-OPEN-':
+                if baza.search_if_exists("$.object", values['-IN-']):
+                    objects = baza.search("$.object", values['-IN-'])
+                    mswordlib.act_table(objects, f"АКТ {values['-IN-']}")
+                    mswordlib.conclusion_table(objects, f"ЗАКЛЮЧЕНИЕ {values['-IN-']}")
+                    mswordlib.methods_table(objects, f"МЕТОДЫ {values['-IN-']}")
+                    mswordlib.ims_table(objects, f"СПИСОК ИМС {values['-IN-']}")
+
+            elif event == "-CLOSE-" or event == sg.WIN_CLOSED or event.startswith('Escape'):
+                self.exportwordwindow.close()
+                break
+
+        self.exportwordwindow.close()
+
 
 class SpUi:
 
@@ -499,40 +635,31 @@ class SpUi:
             event, values = pages.window.read()
             if event == "-Add-":
                 pages.window.Hide()
-                pages.addaddpage()
-                while True:  # Add Page
-                    event, values = pages.addwindow.read()
-                    if event == "-AddTs-":  # AddPage
-                        pages.addwindow.Hide()
-                        if pages.credentialspage:  # close check
-                            pages.addtspage(master=True, headername="Добавление технического средства")
-                            table1.clear()
-                            table2.clear()
 
-                        pages.addwindow.UnHide()
-                    # elif event == "-AddKomers-":
-                    #     # Добавление огранизации
-                    #     pass
-
-                    elif event == sg.WIN_CLOSED or event == "-CloseAddPage-":
-                        pages.window.UnHide()
-                        pages.addwindow.close()
-                        break
+                if pages.credentialspage:  # close check
+                    pages.addtspage(master=True, headername="Добавление технического средства")
+                    table1.clear()
+                    table2.clear()
+                pages.window.UnHide()
 
             elif event == "-Edit-":
-                # view + edit
                 pages.window.Hide()
                 pages.edit_ts_page("Редактирование")
 
                 pages.window.UnHide()
 
+            elif event == "-Export-":
+                pages.window.Hide()
+                pages.word_output_page("Экспорт в Word")
+
+                pages.window.UnHide()
+
             elif event == sg.WIN_CLOSED:
                 break
-            # mainpage event, values
+
         pages.window.close()
 
-        # TODO Добавить функцию просмотра и редактирования ТС из базы
-        # TODO Реализовать разные методы поиска ТС
-
-        # TODO Реализовать метод вывода всех УНИКАЛЬНЫХ названий, моделей, вендоров и СЗЗ.
-        # TODO Реализовать функцию автозаполнения (из примера autocompleteTest.py) полей "имя", "модель", "вендор"
+        # TODO зависимость полей "имя", "модель", "вендор", "серийник"
+        # TODO Подсчёт количества в базе, вывод элементов с количеством в таблицу
+        # TODO Добавить возможность добавление ТС в slave (редактирование)
+        # TODO Многовыборный поиск ТС, и зависимые подсказки автозаполнение полей "имя", "модель", "вендор"

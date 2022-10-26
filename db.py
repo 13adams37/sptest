@@ -14,7 +14,7 @@ try:
 except OSError:
     db = jsondblite.Database("testbig.db", create=False)
 
-keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'uv', 'folder',
+keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
 
 
@@ -25,21 +25,16 @@ class DataBase:
         with db:
             db.add(self.makejson(what))
 
-    # def get(self, what):
-    #     with open("db.json", 'r') as json_file:
-    #         json_data = json.load(json_file)
-    #     jsonpath_expression = parse(what)
-    #
-    #     items = []
-    #
-    #     for match in jsonpath_expression.find(json_data):
-    #         if match.value not in items:
-    #             items.append(match)
-    #     return items
-
     def search(self, jquery, name):
         with db:
-            db.search(jquery, name)
+            return db.search(jquery, name)
+            # print(db.search(jquery, name))
+
+    def search_if_exists(self, jquery, name):
+        if db.search(jquery, name):
+            return True
+        else:
+            return False
 
     def get_index_names(self, index):
         items = []
@@ -48,6 +43,17 @@ class DataBase:
                 # if item[1] not in items:
                 #     items.append(item[1])
                 items.append(item)
+        # items.sort()
+        return items
+
+    def get_unique_index_names(self, index):
+        items = []
+        with db:
+            for item in db.get_index_values(index):
+                # if item[1] not in items:
+                #     items.append(item[1])
+                if item[1] not in items:
+                    items.append(item[1])
         # items.sort()
         return items
 
@@ -143,3 +149,7 @@ if __name__ == '__main__':
     # print(resp)
     # print("body", resp[0][1])
     # print("id", resp[0][0])
+
+    # print(dbclass.get_by_id("2be3291a137744d8a53135c64bb112f0"))
+    # print(dbclass.get_unique_index_names('names'))
+

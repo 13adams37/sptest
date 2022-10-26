@@ -8,10 +8,10 @@ def row_count(obj):
     if type(obj) == list:
         for element in obj:
             length += 1
-            if len(element['table']):
-                length += len(element['table'])
-                if len(element['table']):
-                    for i in element['table']:
+            if len(element[1]['table']):
+                length += len(element[1]['table'])
+                if len(element[1]['table']):
+                    for i in element[1]['table']:
                         length += len(i['table'])
     else:
         length += 1
@@ -39,7 +39,7 @@ class Word:
     def __init__(self):
         pass
 
-    def act_table(self, elements):
+    def act_table(self, elements, output_name):
         doc = docx.Document()
 
         print(row_count(elements))
@@ -50,10 +50,11 @@ class Word:
         # применяем стиль для таблицы
         table.style = 'Table Grid'
 
-        row = 0
+        row = -1
         while row != rows or row <= rows:
             items = []
             for item in elements:
+                item = item[1]
                 if type(item) == dict:
                     items.append(item)
                 else:
@@ -61,56 +62,69 @@ class Word:
                     break
             counter = 0
             for item in items:
+                print(item)
                 counter += 1
+                row += 1
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, item['name'])
                 editcell(table, row, 2, item['model'])
                 editcell(table, row, 3, item['part'])
                 editcell(table, row, 4, item['vendor'])
-                editcell(table, row, 5, '1')  # test
+                editcell(table, row, 5, item['amount'])
+                # editcell(table, row, 5, '1')  # test
                 editcell(table, row, 6, item['serial1'])
-                if item['uv'] == True:
+
+                if item['uv']:
                     editcell(table, row, 7, "УФ")
                 else:
                     editcell(table, row, 7, item['serial2'])
+
                 editcell(table, row, 8, 'CC')
                 editcell(table, row, 9, '2')
 
                 if item['table']:
                     for item1 in item['table']:
+                        print(item1)
                         row = row + 1
                         editcell(table, row, 1, item1['name'])
                         editcell(table, row, 2, item1['model'])
                         editcell(table, row, 3, item1['part'])
                         editcell(table, row, 4, item1['vendor'])
-                        editcell(table, row, 5, '1')  # test
+                        editcell(table, row, 5, item['amount'])
+                        # editcell(table, row, 5, '1')  # test
                         editcell(table, row, 6, item1['serial1'])
-                        if item1['uv'] == True:
+
+                        if item1['uv']:
                             editcell(table, row, 7, "УФ")
                         else:
                             editcell(table, row, 7, item1['serial2'])
+
                         editcell(table, row, 8, 'CC')
                         editcell(table, row, 9, '2')
 
                         if item1['table']:
                             for item2 in item1['table']:
+                                print(item2)
                                 row = row + 1
                                 editcell(table, row, 1, item2['name'])
                                 editcell(table, row, 2, item2['model'])
                                 editcell(table, row, 3, item2['part'])
                                 editcell(table, row, 4, item2['vendor'])
-                                editcell(table, row, 5, '1')  # test
+                                # editcell(table, row, 5, '1')  # test
+                                editcell(table, row, 5, item['amount'])
                                 editcell(table, row, 6, item2['serial1'])
-                                if item2['uv'] == True:
+
+                                if item2['uv']:
                                     editcell(table, row, 7, "УФ")
                                 else:
                                     editcell(table, row, 7, item2['serial2'])
+
                                 editcell(table, row, 8, 'CC')
                                 editcell(table, row, 9, '2')
             break
-        doc.save('table.docx')
+        doc.save(f'{output_name}.docx')
 
-    def methods_table(self, elements):
+    def methods_table(self, elements, output_name):
         doc = docx.Document()
 
         print(row_count(elements))
@@ -121,19 +135,22 @@ class Word:
         # применяем стиль для таблицы
         table.style = 'Table Grid'
 
-        row = 0
+        row = -1
         while row != rows or row <= rows:
             items = []
             for item in elements:
+                item = item[1]
                 if type(item) == dict:
                     items.append(item)
                 else:
                     items.append(elements)
                     break
+
             counter = 0
             for item in items:
                 subcount = 0
                 counter += 1
+                row += 1
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, prep(item))
 
@@ -152,9 +169,9 @@ class Word:
                                 editcell(table, row, 0, f"{counter}.{subcount}.{subsubcount}")
                                 editcell(table, row, 1, prep(item2))
             break
-        doc.save('table2.docx')
+        doc.save(f'{output_name}.docx')
 
-    def conclusion_table(self, elements):
+    def conclusion_table(self, elements, output_name):
         doc = docx.Document()
 
         print(row_count(elements))
@@ -165,19 +182,23 @@ class Word:
         # применяем стиль для таблицы
         table.style = 'Table Grid'
 
-        row = 0
+        row = -1
         while row != rows or row <= rows:
             items = []
             for item in elements:
+                item = item[1]
                 if type(item) == dict:
                     items.append(item)
                 else:
                     items.append(elements)
                     break
+
             counter = 0
-            serialscounter = 0
+            # serialscounter = 0
             for item in items:
+                serialscounter = 0
                 counter += 1
+                row += 1
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, item['name'])
                 editcell(table, row, 2, item['model'])
@@ -185,8 +206,10 @@ class Word:
                 editcell(table, row, 4, item['vendor'])
                 editcell(table, row, 5, '1')  # test
                 editcell(table, row, 6, item['serial1'])
+
                 if item['serial2']:
                     serialscounter += int(item['serial2'])
+
                 editcell(table, row, 8, 'CC')
                 editcell(table, row, 9, '2')
 
@@ -203,9 +226,9 @@ class Word:
                 editcell(table, row, 7, serialscounter)
                 row += 1
             break
-        doc.save('table3.docx')
+        doc.save(f'{output_name}.docx')
 
-    def ims_table(self, elements):
+    def ims_table(self, elements, output_name):
         doc = docx.Document()
 
         print(row_count(elements))
@@ -216,17 +239,20 @@ class Word:
         # применяем стиль для таблицы
         table.style = 'Table Grid'
 
-        row = 0
+        row = -1
         while row != rows or row <= rows:
             items = []
             for item in elements:
+                item = item[1]
                 if type(item) == dict:
                     items.append(item)
                 else:
                     items.append(elements)
                     break
+
             counter = 0
             for item in items:
+                row += 1
                 counter += 1
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, prep(item))
@@ -247,7 +273,7 @@ class Word:
                                 editcell(table, row, 3, item2['rgg'])
                                 editcell(table, row, 4, item2['rggpp'])
             break
-        doc.save('table4.docx')
+        doc.save(f'{output_name}.docx')
 
 
 if __name__ == '__main__':
@@ -324,100 +350,4 @@ if __name__ == '__main__':
                  'level': 'Элемент', 'table': []}]}]}
     # doc = docx.Document()
     mydictstack = []
-    #
-    #
-    # def row_count(obj):
-    #     length = 0
-    #     if type(obj) == list:
-    #         for element in obj:
-    #             length += 1
-    #             if len(element['table']):
-    #                 length += len(element['table'])
-    #                 if len(element['table']):
-    #                     for i in element['table']:
-    #                         length += len(i['table'])
-    #     else:
-    #         length += 1
-    #         if len(obj['table']):
-    #             length += len(obj['table'])
-    #             if len(obj['table']):
-    #                 for i in obj['table']:
-    #                     length += len(i['table'])
-    #     return length
-    #
-    #
-    mydictstack.append(mydict00)
-    mydictstack.append(mydict11)
-    #
-    # print(row_count(mydict))
-    # rows = row_count(mydict)
-    #
-    # # добавляем таблицу
-    # table = doc.add_table(rows=rows, cols=10)
-    # # применяем стиль для таблицы
-    # table.style = 'Table Grid'
-    # nonBreakSpace = u'\xa0'
-    #
-    #
-    # def editcell(r, c, text):
-    #     cell = table.cell(r, c)
-    #     cell.text = str(text)
-    #
-    #
-    # row = 0
-    # while row != rows or row <= rows:
-    #     items = []
-    #     for item in mydict:
-    #         if type(item) == dict:
-    #             items.append(item)
-    #         else:
-    #             items.append(mydict)
-    #             break
-    #     counter = 0
-    #     for item in items:
-    #         counter += 1
-    #         editcell(row, 0, counter)
-    #         editcell(row, 1, item['name'])
-    #         editcell(row, 2, item['model'])
-    #         editcell(row, 3, item['part'])
-    #         editcell(row, 4, item['vendor'])
-    #         editcell(row, 5, '1')  # test
-    #         editcell(row, 6, item['serial1'])
-    #         editcell(row, 7, item['serial2'])
-    #         editcell(row, 8, 'CC')
-    #         editcell(row, 9, '2')
-    #
-    #         if item['table']:
-    #             for item1 in item['table']:
-    #                 row = row + 1
-    #                 editcell(row, 1, item1['name'])
-    #                 editcell(row, 2, item1['model'])
-    #                 editcell(row, 3, item1['part'])
-    #                 editcell(row, 4, item1['vendor'])
-    #                 editcell(row, 5, '1')  # test
-    #                 editcell(row, 6, item1['serial1'])
-    #                 editcell(row, 7, item1['serial2'])
-    #                 editcell(row, 8, 'CC')
-    #                 editcell(row, 9, '2')
-    #
-    #                 if item1['table']:
-    #                     for item2 in item1['table']:
-    #                         row = row + 1
-    #                         editcell(row, 1, item2['name'])
-    #                         editcell(row, 2, item2['model'])
-    #                         editcell(row, 3, item2['part'])
-    #                         editcell(row, 4, item2['vendor'])
-    #                         editcell(row, 5, '1')  # test
-    #                         editcell(row, 6, item2['serial1'])
-    #                         editcell(row, 7, item2['serial2'])
-    #                         editcell(row, 8, 'CC')
-    #                         editcell(row, 9, '2')
-    #     break
-    #
-    # doc.save('table.docx')
 
-    word = Word()
-    word.act_table(mydictstack)
-    word.methods_table(mydictstack)
-    word.conclusion_table(mydictstack)
-    word.ims_table(mydictstack)
