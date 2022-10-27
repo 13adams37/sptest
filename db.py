@@ -1,9 +1,7 @@
-import time
-
 import jsondblite
 
 try:
-    db = jsondblite.Database("testbig.db", create=True)  # Explicitly create new db.
+    db = jsondblite.Database("testbig.db", create=True)
     with db:
         db.create_index("objects", "$..object")
         db.create_index("names", "$..name")
@@ -28,7 +26,6 @@ class DataBase:
     def search(self, jquery, name):
         with db:
             return db.search(jquery, name)
-            # print(db.search(jquery, name))
 
     def search_if_exists(self, jquery, name):
         if db.search(jquery, name):
@@ -40,44 +37,28 @@ class DataBase:
         items = []
         with db:
             for item in db.get_index_values(index):
-                # if item[1] not in items:
-                #     items.append(item[1])
                 items.append(item)
-        # items.sort()
         return items
 
     def get_unique_index_names(self, index):
         items = []
         with db:
             for item in db.get_index_values(index):
-                # if item[1] not in items:
-                #     items.append(item[1])
                 if item[1] not in items:
                     items.append(item[1])
-        # items.sort()
         return items
-
-    def getall(self):
-        # return db.all()
-        pass
 
     def get_by_id(self, itemid):
         with db:
-            # db.get(id)
             return db.get(itemid)
 
     def get_display_values(self, itemid):  # need transaction
-        # with db:
-        #     response = db.get(itemid)
         response = db.get(itemid)
         return f"{response['object']} {response['name']} {response['model']} {response['part']} {response['vendor']} {response['serial1']}"
 
     def update_element(self, docid, doc):
         with db:
             db.update(docid, self.makejson(doc))
-
-    # def start_transaction(self):
-    #     db.
 
     def makejson(self, elements):  # making dict
         tempdict, tempdict1, tempdict2 = {}, {}, {}

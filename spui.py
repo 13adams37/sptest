@@ -1,8 +1,3 @@
-# from dearpygui import *
-# may be later :(
-import json
-from typing import List
-
 import PySimpleGUI as sg
 import db
 import MSWord
@@ -11,7 +6,6 @@ from copy import deepcopy
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 table1, table2 = [], []
 last_event = ""
-# choices_name, choices_model, choices_part, choices_vendor = [], [], [], []
 fontbig = ("Arial", 24)
 fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
@@ -73,14 +67,6 @@ class Pages:
 
     def addaddpage(self):
         addpage = [
-            # [sg.Button('Добавить организацию', key="-AddKomers-", enable_events=True,
-            #            expand_x=True,
-            #            expand_y=True,
-            #            s=(30, 5),
-            #            button_color=(sg.theme_text_color(), sg.theme_background_color()),
-            #            border_width=0,
-            #            pad=(30, 30),
-            #            font=fontbig)],
             [sg.Button('Добавить проверенное ТС', key="-AddTs-", enable_events=True,
                        expand_x=True,
                        expand_y=True,
@@ -126,10 +112,6 @@ class Pages:
                               element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
                               auto_close_duration=5).read(close=True)
 
-            # elif event == "Без номеров":
-            #     self.object = "Null"
-            #     self.credentialswindow.close()
-            #     return 1
             elif event in ('Отмена', sg.WIN_CLOSED):
                 self.credentialswindow.close()
                 return 0
@@ -140,7 +122,6 @@ class Pages:
         headings = ['Объект', 'Наим.', 'Модель', 'S/N', 'Произв.', 'С1', 'С2', 'Кол-во', 'УФ', 'РГГ', 'РГГ пп',
                     'П', 'Состав']
         tabledata = [NULLLIST, ]
-        predictions_list = []
         addtspage = [
             [sg.Column(
                 [[sg.Text('Объект', font=fontmid), sg.InputText(key='object', default_text=self.object, disabled=True,
@@ -190,17 +171,13 @@ class Pages:
                  [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(3, 0), font=fontmid),
                   sg.Text('Кол-во', font=fontmid), sg.InputText(default_text="1", key='amount', font=fontmid, s=(3, 0))]
                  ]
-                # count values
                 , justification="c", element_justification="r"
             )],
             [sg.Column(
                 [[sg.Checkbox("УФ", font=fontmid, key='uv'),
-                  # sg.Input(k="folder", visible=False),
-                  # sg.FolderBrowse('Папка с фото', k='folder', enable_events=True, visible=False, font=fontmidlow),
                   sg.Text('РГ', font=fontmid),
                   sg.Input(k='rgg', enable_events=True, font=fontmid, s=(10, 0)),
                   sg.Checkbox("Сохр.", k="rggSAVE", font=fontmid),
-                  # sg.FileBrowse("РГГ", k="rgg", font=fontmidlow),
                   sg.Text('РГ пп', font=fontmid), sg.InputText(key='rggpp', s=(5, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(
@@ -280,7 +257,7 @@ class Pages:
                 self.addtswindow[container].update(visible=False)
                 self.addtswindow[f'-BOX{index}-'].update('')
 
-        while True:  # TSPage
+        while True:
             event, values = self.addtswindow.read()
 
             if event == sg.WIN_CLOSED:
@@ -351,6 +328,7 @@ class Pages:
                         self.insert_values_into_table(self.get_tsvalues(values), table1)
                     if self.tsavailable == ["Элемент"]:
                         self.insert_values_into_table(self.get_tsvalues(values), table2)
+
                 if master == True:  # ♂oh shit im sorry♂
                     baza.add(self.get_tsvalues(values))
 
@@ -413,11 +391,9 @@ class Pages:
                     slave.addtspage(master="slave", headername="Редактирование элемента")
 
                 if slave.tsavailable == ["Составная часть", "Элемент"]:
-                    print("processing table1")
                     table1[pos] = slave.tsdata
                     table.Update(table1)
                 if slave.tsavailable == ["Элемент"]:
-                    print("processing table2")
                     table2[pos] = slave.tsdata
                     table.Update(table2)
 
@@ -522,7 +498,6 @@ class Pages:
         self.edittswidow.Maximize()
 
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
-        # store listbox element for easier access and to get to docstrings
         prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
 
         while True:
@@ -659,7 +634,9 @@ class SpUi:
 
         pages.window.close()
 
-        # TODO зависимость полей "имя", "модель", "вендор", "серийник"
         # TODO Подсчёт количества в базе, вывод элементов с количеством в таблицу
-        # TODO Добавить возможность добавление ТС в slave (редактирование)
+        # TODO Добавить возможность добавление ТС (плюсик) в slave (редактирование при добавлении)
         # TODO Многовыборный поиск ТС, и зависимые подсказки автозаполнение полей "имя", "модель", "вендор"
+        # TODO Добавить проверки ввода и показ окна (к окну экспорта в ворд)
+        # TODO Добавить проверку на сохранённость добавленного ТС (1-ое окно, текст в кнопке добавления должен быть "Добавить в базу")
+        # TODO Просмотр ТС, попробывать выводить нижние уровни (поиск в JSON?)
