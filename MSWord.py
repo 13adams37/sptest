@@ -23,6 +23,10 @@ def row_count(obj):
     return length
 
 
+def empty_serial(serial):
+    if not serial:
+        return "—"
+
 def editcell(table, r, c, text):
     cell = table.cell(r, c)
     cell.text = str(text)
@@ -42,7 +46,6 @@ class Word:
     def act_table(self, elements, output_name):
         doc = docx.Document()
 
-        print(row_count(elements))
         rows = row_count(elements)
 
         # добавляем таблицу
@@ -62,7 +65,6 @@ class Word:
                     break
             counter = 0
             for item in items:
-                print(item)
                 counter += 1
                 row += 1
                 editcell(table, row, 0, counter)
@@ -71,53 +73,48 @@ class Word:
                 editcell(table, row, 3, item['part'])
                 editcell(table, row, 4, item['vendor'])
                 editcell(table, row, 5, item['amount'])
-                # editcell(table, row, 5, '1')  # test
-                editcell(table, row, 6, item['serial1'])
+                editcell(table, row, 6, empty_serial(item['serial1']))
 
                 if item['uv']:
                     editcell(table, row, 7, "УФ")
                 else:
-                    editcell(table, row, 7, item['serial2'])
+                    editcell(table, row, 7, empty_serial(item['serial2']))
 
                 editcell(table, row, 8, 'CC')
                 editcell(table, row, 9, '2')
 
                 if item['table']:
                     for item1 in item['table']:
-                        print(item1)
                         row = row + 1
                         editcell(table, row, 1, item1['name'])
                         editcell(table, row, 2, item1['model'])
                         editcell(table, row, 3, item1['part'])
                         editcell(table, row, 4, item1['vendor'])
-                        editcell(table, row, 5, item['amount'])
-                        # editcell(table, row, 5, '1')  # test
-                        editcell(table, row, 6, item1['serial1'])
+                        editcell(table, row, 5, item1['amount'])
+                        editcell(table, row, 6, empty_serial(item1['serial1']))
 
                         if item1['uv']:
                             editcell(table, row, 7, "УФ")
                         else:
-                            editcell(table, row, 7, item1['serial2'])
+                            editcell(table, row, 7, empty_serial(item1['serial2']))
 
                         editcell(table, row, 8, 'CC')
                         editcell(table, row, 9, '2')
 
                         if item1['table']:
                             for item2 in item1['table']:
-                                print(item2)
                                 row = row + 1
                                 editcell(table, row, 1, item2['name'])
                                 editcell(table, row, 2, item2['model'])
                                 editcell(table, row, 3, item2['part'])
                                 editcell(table, row, 4, item2['vendor'])
-                                # editcell(table, row, 5, '1')  # test
-                                editcell(table, row, 5, item['amount'])
-                                editcell(table, row, 6, item2['serial1'])
+                                editcell(table, row, 5, item2['amount'])
+                                editcell(table, row, 6, empty_serial(item2['serial1']))
 
                                 if item2['uv']:
                                     editcell(table, row, 7, "УФ")
                                 else:
-                                    editcell(table, row, 7, item2['serial2'])
+                                    editcell(table, row, 7, empty_serial(item2['serial2']))
 
                                 editcell(table, row, 8, 'CC')
                                 editcell(table, row, 9, '2')
@@ -127,12 +124,9 @@ class Word:
     def methods_table(self, elements, output_name):
         doc = docx.Document()
 
-        print(row_count(elements))
         rows = row_count(elements)
 
-        # добавляем таблицу
         table = doc.add_table(rows=rows, cols=4)
-        # применяем стиль для таблицы
         table.style = 'Table Grid'
 
         row = -1
@@ -177,9 +171,7 @@ class Word:
         print(row_count(elements))
         rows = row_count(elements)
 
-        # добавляем таблицу
         table = doc.add_table(rows=rows, cols=10)
-        # применяем стиль для таблицы
         table.style = 'Table Grid'
 
         row = -1
@@ -194,7 +186,6 @@ class Word:
                     break
 
             counter = 0
-            # serialscounter = 0
             for item in items:
                 serialscounter = 0
                 counter += 1
@@ -204,8 +195,8 @@ class Word:
                 editcell(table, row, 2, item['model'])
                 editcell(table, row, 3, item['part'])
                 editcell(table, row, 4, item['vendor'])
-                editcell(table, row, 5, '1')  # test
-                editcell(table, row, 6, item['serial1'])
+                editcell(table, row, 5, item['amount'])
+                editcell(table, row, 6, empty_serial(item['serial1']))
 
                 if item['serial2']:
                     serialscounter += int(item['serial2'])
@@ -224,19 +215,16 @@ class Word:
                                     serialscounter += int(item2['serial2'])
 
                 editcell(table, row, 7, serialscounter)
-                row += 1
+                # row += 1
             break
         doc.save(f'{output_name}.docx')
 
     def ims_table(self, elements, output_name):
         doc = docx.Document()
 
-        print(row_count(elements))
         rows = row_count(elements)
 
-        # добавляем таблицу
         table = doc.add_table(rows=rows, cols=5)
-        # применяем стиль для таблицы
         table.style = 'Table Grid'
 
         row = -1
@@ -254,6 +242,7 @@ class Word:
             for item in items:
                 row += 1
                 counter += 1
+                subcounter = 0
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, prep(item))
                 editcell(table, row, 3, item['rgg'])
@@ -261,7 +250,10 @@ class Word:
 
                 if item['table']:
                     for item1 in item['table']:
+                        subsubcounter = 0
                         row += 1
+                        subcounter += 1
+                        editcell(table, row, 0, subcounter)
                         editcell(table, row, 1, prep(item1))
                         editcell(table, row, 3, item1['rgg'])
                         editcell(table, row, 4, item1['rggpp'])
@@ -269,6 +261,8 @@ class Word:
                         if item1['table']:
                             for item2 in item1['table']:
                                 row += 1
+                                subsubcounter += 1
+                                editcell(table, row, 0, subsubcounter)
                                 editcell(table, row, 1, prep(item2))
                                 editcell(table, row, 3, item2['rgg'])
                                 editcell(table, row, 4, item2['rggpp'])

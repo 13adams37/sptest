@@ -3,7 +3,7 @@ import jsondblite
 try:
     db = jsondblite.Database("testbig.db", create=True)
     with db:
-        db.create_index("objects", "$..object")
+        db.create_index("objects", "$.object")
         db.create_index("names", "$..name")
         db.create_index("models", "$..model")
         db.create_index("parts", "$..part")
@@ -33,6 +33,12 @@ class DataBase:
         else:
             return False
 
+    def search_by_id_if_exists(self, docid):
+        if db.get(docid) is not None:
+            return True
+        else:
+            return False
+
     def get_index_names(self, index):
         items = []
         with db:
@@ -49,16 +55,20 @@ class DataBase:
         return items
 
     def get_by_id(self, itemid):
-        with db:
-            return db.get(itemid)
+        return db.get(itemid)
 
     def get_display_values(self, itemid):  # need transaction
         response = db.get(itemid)
-        return f"{response['object']} {response['name']} {response['model']} {response['part']} {response['vendor']} {response['serial1']}"
+        if response is not None:
+            return f"{response['object']} {response['name']} {response['model']} {response['part']} {response['vendor']} {response['serial1']}"
 
     def update_element(self, docid, doc):
         with db:
             db.update(docid, self.makejson(doc))
+
+    def delete_by_id(self, docid):
+        with db:
+            db.delete(docid)
 
     def makejson(self, elements):  # making dict
         tempdict, tempdict1, tempdict2 = {}, {}, {}
