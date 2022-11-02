@@ -1,3 +1,4 @@
+import json
 import PySimpleGUI as sg
 import db
 import MSWord
@@ -25,6 +26,7 @@ class Pages:
         self.addkomerswindow = None
         self.edittswidow = None
         self.exportwordwindow = None
+        self.importwindow = None
 
         self.object = None
         self.tsdata = []
@@ -34,33 +36,44 @@ class Pages:
 
     def mainpage(self):
         mainpage = [
-            [sg.Button('Добавление ТС', key="-Add-", enable_events=True,
-                       expand_x=True,
-                       expand_y=True,
-                       pad=(30, 30),
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       font=fontbig,
-                       )],
-            [sg.Button('Редактирование/просмотр ТС', key="-Edit-", enable_events=True,
-                       expand_x=True,
-                       expand_y=True,
-                       pad=(30, 30),
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       font=fontbig
-                       )],
-            [sg.Button('Экспорт в Word', key="-Export-", enable_events=True,
-                       expand_x=True,
-                       expand_y=True,
-                       pad=(30, 30),
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       font=fontbig
-                       )]
+            [sg.Column(
+                [[sg.Button('Добавление ТС', key="-Add-", enable_events=True,
+                            expand_x=True,
+                            expand_y=True,
+                            pad=(30, 30),
+                            s=(30, 5),
+                            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                            border_width=0,
+                            font=fontbig,
+                            ),
+                  sg.Button('Редактирование и просмотр ТС', key="-Edit-", enable_events=True,
+                            expand_x=True,
+                            expand_y=True,
+                            pad=(30, 30),
+                            s=(30, 5),
+                            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                            border_width=0,
+                            font=fontbig
+                            )], ], )],
+            [sg.Column(
+                [[sg.Button('Импорт и экспорт базы', key="-Import-", enable_events=True,
+                            expand_x=True,
+                            expand_y=True,
+                            pad=(30, 30),
+                            s=(30, 5),
+                            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                            border_width=0,
+                            font=fontbig
+                            ),
+                  sg.Button('Экспорт в Word', key="-Export-", enable_events=True,
+                            expand_x=True,
+                            expand_y=True,
+                            pad=(30, 30),
+                            s=(30, 5),
+                            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                            border_width=0,
+                            font=fontbig
+                            )], ], )]
         ]
         self.window = sg.Window('MainPage', mainpage, resizable=True).Finalize()
         # self.window.Maximize()
@@ -700,7 +713,7 @@ class Pages:
 
     def word_output_page(self, headername):
         mswordlib = MSWord.Word()
-        editlayout = [
+        wordlayout = [
             [
                 sg.Column([
                     [sg.T("         ")],
@@ -720,7 +733,7 @@ class Pages:
             ]
         ]
 
-        self.exportwordwindow = sg.Window(headername, editlayout, resizable=True, return_keyboard_events=True,
+        self.exportwordwindow = sg.Window(headername, wordlayout, resizable=True, return_keyboard_events=True,
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
         list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
@@ -759,15 +772,121 @@ class Pages:
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
 
-            if event == '-OPEN-' and values["-IN-"]:
+            elif event == '-OPEN-' and values["-IN-"]:
                 if baza.search_if_exists("$.object", values['-IN-']):
                     objects = baza.search("$.object", values['-IN-'])
                     mswordlib.act_table(objects, f"АКТ {values['-IN-']}")
                     mswordlib.conclusion_table(objects, f"ЗАКЛЮЧЕНИЕ {values['-IN-']}")
                     mswordlib.methods_table(objects, f"МЕТОДЫ {values['-IN-']}")
                     mswordlib.ims_table(objects, f"СПИСОК ИМС {values['-IN-']}")
+                    sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
+                                      auto_close=True, font=fontbig, button_type=5)
 
         self.exportwordwindow.close()
+
+    def import_page(self, headername):
+        importlayout = [
+            [
+                sg.Column([
+                    [sg.T("         ")],
+                    [sg.T("Импорт и экспорт базы", font=fontbig)],
+                    [sg.T("         ")],
+                    [sg.Input(size=(30, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                    [sg.pin(sg.Col(
+                        [[sg.Listbox(values=[], size=(80, 15), enable_events=True, key='-BOX-',
+                                     select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                        key='-BOX-CONTAINER-', pad=(0, 0)))]
+                ], justification="c", element_justification="c")
+            ],
+            [
+                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                        enable_events=True, expand_x=True),
+                sg.Button("Импортировать", key="-IMPORT-", font=fontbutton),
+                sg.Button("Экспортировать", key="-EXPORT-", font=fontbutton),
+            ]
+        ]
+
+        self.importwindow = sg.Window(headername, importlayout, resizable=True, return_keyboard_events=True,
+                                      element_justification="").Finalize()
+        self.importwindow.Maximize()
+
+        # вводишь в поле название (с подсказками), 2 кнопки (импорт, экспорт)
+        # при нажатии на экспорт собирается из базы json файл по объекту и открывается окно сохранения.
+        # при нажатии импорт открывается окно выбора файла, объект в файле заменяется на объект с поля ввода, и добавляется в базу
+
+        list_element: sg.Listbox = self.importwindow.Element('-BOX-')
+        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+        choices = baza.get_unique_index_names('objects')
+
+        while True:
+            event, values = self.importwindow.read()
+
+            if event == "-CLOSE-" or event == sg.WIN_CLOSED:
+                self.importwindow.close()
+                break
+
+            elif event.startswith('Escape'):
+                self.importwindow['-IN-'].update('')
+            elif event.startswith('Down') and len(prediction_list):
+                sel_item = (sel_item + 1) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            elif event.startswith('Up') and len(prediction_list):
+                sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            elif event == '\r':
+                if len(values['-BOX-']) > 0:
+                    self.importwindow['-IN-'].update(value=values['-BOX-'][0])
+            elif event == '-IN-':
+                text = values['-IN-'].lower()
+                if text == input_text:
+                    continue
+                else:
+                    input_text = text
+                prediction_list = []
+                if text:
+                    prediction_list = [item for item in choices if item.lower().__contains__(text)]  # text
+
+                list_element.update(values=prediction_list)
+                sel_item = 0
+                list_element.update(set_to_index=sel_item)
+
+            elif event == '-EXPORT-' and values["-IN-"]:
+                if baza.search_if_exists("$.object", values['-IN-']):
+                    objects = baza.search("$.object", values['-IN-'])
+                    path = sg.popup_get_folder('NAVI bomji', no_window=True)
+                    with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
+                        f.truncate(0)
+                        json.dump(objects, f)
+                        sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
+                                          auto_close=True, font=fontbig, button_type=5)
+
+            elif event == '-IMPORT-':
+                file_path = sg.popup_get_file("file search", file_types=(("JSON", "*.json "),), no_window=True)
+                if file_path is not None:
+                    def change_obj(what, to):
+                        temp = what.copy()
+                        temp['object'] = to
+                        if temp['table']:
+                            for item1 in temp['table']:
+                                item1['object'] = to
+                                if item1['table']:
+                                    for item2 in item1['table']:
+                                        item2['table'] = to
+                        return temp
+
+                    with open(f"{values['-IN-']}.json", "r") as file:
+                        file_content = json.load(file)
+                        for content in file_content:
+                            if not baza.search_by_id_if_exists(content[0]):
+                                if values["-IN-"]:
+                                    baza.add(change_obj(content[1], values["-IN-"]))
+                                else:
+                                    baza.add(content[1])
+
+                    sg.popup_no_frame(f'"{values["-IN-"]}" импортирован.', auto_close_duration=1,
+                                      auto_close=True, font=fontbig, button_type=5)
+
+        self.importwindow.close()
 
 
 class SpUi:
@@ -797,6 +916,12 @@ class SpUi:
             elif event == "-Export-":
                 pages.window.Hide()
                 pages.word_output_page("Экспорт в Word")
+
+                pages.window.UnHide()
+
+            elif event == "-Import-":
+                pages.window.Hide()
+                pages.import_page("Экспорт в Word")
 
                 pages.window.UnHide()
 
