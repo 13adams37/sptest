@@ -316,14 +316,21 @@ class Pages:
                         self.addtswindow[self.last_event].update(value=values[f'-BOX{self.last_event}-'][0])
                         self.addtswindow[f'-CONTAINER{self.last_event}-'].update(visible=False)
 
-                get_focused_elementname = self.addtswindow.find_element_with_focus().Key
-                self.addtswindow[event_list[0 if get_focused_elementname == 'rggpp' else event_list.index(
-                    get_focused_elementname) + 1]].SetFocus(True)
+                try:
+                    get_focused_elementname = self.addtswindow.find_element_with_focus().Key
+                    self.addtswindow[event_list[0 if get_focused_elementname == 'rggpp' else event_list.index(
+                        get_focused_elementname) + 1]].SetFocus(True)
+                except AttributeError:
+                    pass
+                    # edit ts bugfix
 
             elif event in ('name', 'model', 'part', 'vendor'):
                 self.last_event = event
                 list_element: sg.Listbox = self.addtswindow.Element(f'-BOX{event}-')
                 make_predictions(event, f'-CONTAINER{event}-')
+                for inp in ['name', 'model', 'part', 'vendor']:
+                    if inp != event:
+                        self.addtswindow[f'-CONTAINER{inp}-'].update(visible=False)
 
             elif event == "level" and not master == "slave":
                 if values[event] == "Комплект" or values[event] == "Составная часть":
