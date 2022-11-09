@@ -26,6 +26,8 @@ def row_count(obj):
 def empty_serial(serial):
     if not serial:
         return "—"
+    else:
+        return serial
 
 def editcell(table, r, c, text):
     cell = table.cell(r, c)
@@ -120,6 +122,13 @@ class Word:
                                 editcell(table, row, 9, '2')
             break
         doc.save(f'{output_name}.docx')
+        # try:
+        #     doc.save(f'{output_name}.docx')
+        # except PermissionError:
+        #     sg.Window('Ошибочка',
+        #               [[sg.T('Заполните поле!', font=("Arial", 24))], [sg.Button('Понял', font=fontbutton)]],
+        #               element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
+        #               auto_close_duration=5).read(close=True)
 
     def methods_table(self, elements, output_name):
         doc = docx.Document()
@@ -267,6 +276,7 @@ class Word:
                                 editcell(table, row, 3, item2['rgg'])
                                 editcell(table, row, 4, item2['rggpp'])
             break
+        # try:
         doc.save(f'{output_name}.docx')
 
 

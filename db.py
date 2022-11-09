@@ -9,6 +9,7 @@ try:
         db.create_index("parts", "$..part")
         db.create_index("vendors", "$..vendor")
         db.create_index("serials", "$..serial1")
+        db.add({"search": True, "hints": True, "jump": True})
 except OSError:
     db = jsondblite.Database("testbig.db", create=False)
 
@@ -66,6 +67,10 @@ class DataBase:
         with db:
             db.update(docid, self.makejson(doc))
 
+    def update_element_dict(self, docid, doc):
+        with db:
+            db.update(docid, doc)
+
     def delete_by_id(self, docid):
         with db:
             db.delete(docid)
@@ -95,6 +100,11 @@ class DataBase:
 
 if __name__ == '__main__':
     dbclass = DataBase()
+    # with db:
+    #     db.delete("3c7b2f399ffa41cb99594e4836fbba26")
+    with db:
+        db.add({"search": True, "hints": True, "jump": True}, "1337")
+
     # Максимальное заполнение за 10 секунд
     # mydict = ['multi', 'Системный блок', 'KCAS-13', '148001', 'POWERCOOL', '1337555', '', False, '', '', '', 'Комплект', [['multi', 'материнка', 'b450m-re', 'AKB450M000137', 'ASUS', '', '1', False, '', '', '', 'Составная часть', [['multi', 'проц', 'i7-4700k', '00148', 'Intel', '', '', True, '', '', '', 'Элемент', []]]], ['multi', 'SSD', 'ARC-100', '', 'OCZ', '', '', False, '', '', '', 'Составная часть', []], ['multi', 'БП', 'R450M', '', 'AEROCOOL', '', '', False, '', '', '', 'Составная часть', [['multi', 'плата', '', '', '', '', '', False, '', '', '', 'Элемент', []]]], ['multi', 'вентилятор корпуса', 'SA-143', '', 'DEEPCOOL', '', '1', False, '', '', '', 'Элемент', []]]]
     # timeout = 10  # [seconds]
