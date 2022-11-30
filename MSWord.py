@@ -29,6 +29,7 @@ def empty_serial(serial):
     else:
         return serial
 
+
 def editcell(table, r, c, text):
     cell = table.cell(r, c)
     cell.text = str(text)
@@ -47,12 +48,8 @@ class Word:
 
     def act_table(self, elements, output_name):
         doc = docx.Document()
-
         rows = row_count(elements)
-
-        # добавляем таблицу
         table = doc.add_table(rows=rows, cols=10)
-        # применяем стиль для таблицы
         table.style = 'Table Grid'
 
         row = -1
@@ -122,23 +119,14 @@ class Word:
                                 editcell(table, row, 9, '2')
             break
         doc.save(f'{output_name}.docx')
-        # try:
-        #     doc.save(f'{output_name}.docx')
-        # except PermissionError:
-        #     sg.Window('Ошибочка',
-        #               [[sg.T('Заполните поле!', font=("Arial", 24))], [sg.Button('Понял', font=fontbutton)]],
-        #               element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
-        #               auto_close_duration=5).read(close=True)
 
     def methods_table(self, elements, output_name):
         doc = docx.Document()
-
         rows = row_count(elements)
-
         table = doc.add_table(rows=rows, cols=4)
         table.style = 'Table Grid'
-
         row = -1
+
         while row != rows or row <= rows:
             items = []
             for item in elements:
@@ -176,14 +164,11 @@ class Word:
 
     def conclusion_table(self, elements, output_name):
         doc = docx.Document()
-
-        print(row_count(elements))
         rows = row_count(elements)
-
         table = doc.add_table(rows=rows, cols=10)
         table.style = 'Table Grid'
-
         row = -1
+
         while row != rows or row <= rows:
             items = []
             for item in elements:
@@ -224,19 +209,16 @@ class Word:
                                     serialscounter += int(item2['serial2'])
 
                 editcell(table, row, 7, serialscounter)
-                # row += 1
             break
         doc.save(f'{output_name}.docx')
 
     def ims_table(self, elements, output_name):
         doc = docx.Document()
-
         rows = row_count(elements)
-
         table = doc.add_table(rows=rows, cols=5)
         table.style = 'Table Grid'
-
         row = -1
+
         while row != rows or row <= rows:
             items = []
             for item in elements:
@@ -251,7 +233,7 @@ class Word:
             for item in items:
                 row += 1
                 counter += 1
-                subcounter = 0
+                subcount = 0
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, prep(item))
                 editcell(table, row, 3, item['rgg'])
@@ -259,10 +241,10 @@ class Word:
 
                 if item['table']:
                     for item1 in item['table']:
-                        subsubcounter = 0
+                        subsubcount = 0
                         row += 1
-                        subcounter += 1
-                        editcell(table, row, 0, subcounter)
+                        subcount += 1
+                        editcell(table, row, 0, f"{counter}.{subcount}")
                         editcell(table, row, 1, prep(item1))
                         editcell(table, row, 3, item1['rgg'])
                         editcell(table, row, 4, item1['rggpp'])
@@ -270,15 +252,10 @@ class Word:
                         if item1['table']:
                             for item2 in item1['table']:
                                 row += 1
-                                subsubcounter += 1
-                                editcell(table, row, 0, subsubcounter)
+                                subsubcount += 1
+                                editcell(table, row, 0, f"{counter}.{subcount}.{subsubcount}")
                                 editcell(table, row, 1, prep(item2))
                                 editcell(table, row, 3, item2['rgg'])
                                 editcell(table, row, 4, item2['rggpp'])
             break
-        # try:
         doc.save(f'{output_name}.docx')
-
-
-if __name__ == '__main__':
-    pass

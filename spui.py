@@ -9,6 +9,7 @@ headings = ['Объект', 'Наименование', 'Модель', 'Сер�
             'РГ', 'РГ пп', 'Признак', 'Состав']
 table1, table2 = [], []
 last_event = ""
+shortcut_state = False
 fontbig = ("Arial", 24)
 fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
@@ -18,11 +19,27 @@ char_width = sg.Text.char_width_in_pixels(fontmidlow)
 baza = db.DataBase()
 tdb = db.db
 
-settings_query = baza.get_by_id("1337")
 
+def _onKeyRelease(event):
+    ctrl = (event.state & 0x4) != 0
+    if event.keycode == 88 and ctrl and event.keysym.lower() != "x":
+        event.widget.event_generate("<<Cut>>")
 
-def get_settings():
-    return baza.get_by_id("1337")
+    if event.keycode == 86 and ctrl and event.keysym.lower() != "v":
+        event.widget.event_generate("<<Paste>>")
+
+    if event.keycode == 67 and ctrl and event.keysym.lower() != "c":
+        event.widget.event_generate("<<Copy>>")
+
+    if event.keycode == 65 and ctrl and event.keysym.lower() != "a":
+        event.widget.event_generate("<<SelectAll>>")
+
+    # if event.keycode == 83 and ctrl and event.keysym.lower() != "s":
+    if event.keycode == 83 and ctrl:  # ctrl + s, save
+        event.widget.event_generate("<<MySave>>")
+
+    if event.keycode == 78 and ctrl:  # ctrl + n, clear
+        event.widget.event_generate("<<MyClear>>")
 
 
 def popup_yes_no(main_text='Заглушка'):
@@ -37,7 +54,8 @@ def popup_yes_no(main_text='Заглушка'):
              sg.Submit("Нет", font=fontbutton, s=(15, 0))],
         ], justification="c", element_justification="c")
     ]]
-    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True).Finalize()
+    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True,
+                         keep_on_top=True).Finalize()
 
     while True:
         event, values = popupwin.read()
@@ -69,13 +87,14 @@ def popup_input_text(main_text='Заглушка'):
     ],
         [
             sg.Column([
-                [sg.Cancel('Подтвердить', font=fontbutton, s=(15, 0)),
-                 sg.Submit("Отмена", font=fontbutton, s=(15, 0))
+                [sg.Button('Подтвердить', font=fontbutton, s=(15, 0)),
+                 sg.Button("Отмена", font=fontbutton, s=(15, 0))
                  ],
             ], justification="c", element_justification="c")
         ]
     ]
     popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True).Finalize()
+    popupwin['-IN-'].SetFocus(True)
 
     while True:
         event, values = popupwin.read()
@@ -84,23 +103,26 @@ def popup_input_text(main_text='Заглушка'):
             popupwin.close()
             return None
 
-        elif (event.startswith("\r") or event == 'Да') and values["-IN-"]:
+        elif (event.startswith("\r") or event == 'Подтвердить') and values["-IN-"]:
             popupwin.close()
             return values["-IN-"]
 
-        elif event.startswith("Escape") or event == 'Нет':
+        elif event.startswith("Escape") or event == 'Отмена':
             popupwin.close()
             return None
 
 
-def popup_input_text_with_hints(headername, middle_text="Удаление и изменение", index_name='objects'):
+def popup_input_text_with_hints(headername, middle_text="Удаление и изменение",
+                                index_name='objects'):
     def myFunc(e):
         return e[1]
 
     input_width = 80
     num_items_to_show = 18
 
-    choices = baza.get_index_names(f"{index_name}")
+    settings_query = baza.get_by_id("1337")
+
+    choices = baza.get_unique_index_names(f"{index_name}")
     choices.sort(key=myFunc)
 
     hintedinputlayout = [
@@ -140,15 +162,25 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                     for item in baza.search('$.object', f'{values["-IN-"]}'):
                         baza.delete_by_id(item[0])
 
-                    choices = baza.get_index_names(f"{index_name}")
+                    choices = baza.get_unique_index_names(f"{index_name}")
                     choices.sort(key=myFunc)
-                    hintedinputwindow['-IN-'].update('')
+                    cnt = 0
+                    text = values['-IN-'].lower()
                     if settings_query['search']:
-                        prediction_list = [f"{item[1]}" for item in choices if
-                                           item[1].lower().__contains__(values['-IN-'].lower())]
+                        for item in choices:
+                            if item.lower().__contains__(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == int(settings_query['max_len']):
+                                    break
                     else:
-                        prediction_list = [f"{item[1]}" for item in choices if
-                                           item[1].lower().statswith(values['-IN-'].lower())]
+                        for item in choices:
+                            if item.lower().startswith(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == int(settings_query['max_len']):
+                                    break
+
                     list_element.update(values=prediction_list)
                     sel_item = 0
                     list_element.update(set_to_index=sel_item)
@@ -168,12 +200,24 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                                         item2['object'] = popup_text
                         baza.update_element_dict(item[0], obj)
 
-                    hintedinputwindow['-IN-'].update('')
-                    choices = baza.get_index_names(f"{index_name}")
+                    choices = baza.get_unique_index_names(f"{index_name}")
                     choices.sort(key=myFunc)
-                    prediction_list = [f"{item[1]}"
-                                       for item in choices if
-                                       item[1].lower().__contains__(values['-IN-'].lower())]
+                    cnt = 0
+                    text = values['-IN-'].lower()
+                    if settings_query['search']:
+                        for item in choices:
+                            if item.lower().__contains__(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == int(settings_query['max_len']):
+                                    break
+                    else:
+                        for item in choices:
+                            if item.lower().startswith(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == int(settings_query['max_len']):
+                                    break
                     list_element.update(values=prediction_list)
                     sel_item = 0
                     list_element.update(set_to_index=sel_item)
@@ -184,15 +228,19 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
 
         elif event.startswith('Escape'):
             hintedinputwindow['-IN-'].update('')
+
         elif event.startswith('Down') and len(prediction_list):
             sel_item = (sel_item + 1) % len(prediction_list)
             list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
         elif event.startswith('Up') and len(prediction_list):
             sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
             list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
         elif event == '\r':
             if len(values['-BOX-']) > 0:
                 hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
+
         elif event == '-IN-':
             text = values['-IN-'].lower()
             if text == input_text:
@@ -201,17 +249,82 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                 input_text = text
             prediction_list = []
             if text:
-                prediction_list = [f"{item[1]}"
-                                   for item in choices if item[1].lower().__contains__(text)]
+                cnt = 0
+                if settings_query['search']:
+                    for item in choices:
+                        if item.lower().__contains__(text):
+                            prediction_list.append(item)
+                            cnt += 1
+                            if cnt == int(settings_query['max_len']):
+                                break
+                else:
+                    for item in choices:
+                        if item.lower().startswith(text):
+                            prediction_list.append(item)
+                            cnt += 1
+                            if cnt == int(settings_query['max_len']):
+                                break
 
             list_element.update(values=prediction_list)
             sel_item = 0
             list_element.update(set_to_index=sel_item)
 
-        elif event == '-BOX-':
-            hintedinputwindow['-IN-'].update(value=values['-BOX-'])
+        elif event == '-BOX-' and values['-BOX-']:
+            hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
 
     hintedinputwindow.close()
+
+
+def super_predictor(index_type, index_name, text):  # later
+    #  index_type - uniquenames, uniqueidnames, names
+    def myFunc(e):
+        return e[1]
+
+    settings_query = baza.get_by_id("1337")
+
+    if index_type == "unique_names":
+        choices = baza.get_unique_index_names(f"{index_name}")
+    elif index_type == "unique_idnames":
+        choices = baza.get_unique_index_idnames(f"{index_name}")
+    else:
+        choices = baza.get_index_names(f"{index_name}")
+
+    choices.sort(key=myFunc)
+
+    prediction_list = []
+    cnt = 0
+    if index_type == "unique_names" or "names":  # only names
+        if settings_query['search']:
+            for item in choices:
+                if item.lower().__contains__(text):
+                    prediction_list.append(item)
+                    cnt += 1
+                    if cnt == int(settings_query['max_len']):
+                        break
+        else:
+            for item in choices:
+                if item.lower().startswith(text):
+                    prediction_list.append(item)
+                    cnt += 1
+                    if cnt == int(settings_query['max_len']):
+                        break
+        return prediction_list
+    else:  # id, names
+        if settings_query['search']:
+            for item in choices:
+                if item.lower().__contains__(text):
+                    prediction_list.append(item)
+                    cnt += 1
+                    if cnt == int(settings_query['max_len']):
+                        break
+        else:
+            for item in choices:
+                if item.lower().startswith(text):
+                    prediction_list.append(item)
+                    cnt += 1
+                    if cnt == int(settings_query['max_len']):
+                        break
+        return prediction_list
 
 
 def replace_bool(input_data):
@@ -234,8 +347,7 @@ def count_char_length(input_data):
                 total = temp
     if total * char_width <= 240:
         return 240
-    return total * int(char_width * 0.8)
-    # return total * char_width
+    return total * char_width
 
 
 def table_list_simplify(data):
@@ -275,10 +387,11 @@ class Pages:
         self.input_text, self.last_event = '', ''
 
         # settings
-        # settings_query = baza.get_by_id("1337")
+        settings_query = baza.get_by_id("1337")
         self.search_type = settings_query['search']
         self.hints_type = settings_query['hints']
         self.jump_type = settings_query['jump']
+        self.prediction_len = int(settings_query['max_len'])
 
     def mainpage(self):
         mainpage = [
@@ -331,8 +444,7 @@ class Pages:
                             font=fontbig
                             )], ], justification='c')]
         ]
-        self.window = sg.Window('MainPage', mainpage, resizable=True).Finalize()
-        # self.window.Maximize()
+        self.window = sg.Window('Главное меню', mainpage, resizable=True).Finalize()
 
     def settingspage(self):
         temp_settings_query = baza.get_by_id("1337")
@@ -355,6 +467,10 @@ class Pages:
                             font=fontmid, key='jump', readonly=True)
             ],
             [
+                sg.Text('Максимальное количество вывода элементов (0 - все) ', font=fontbig),
+                sg.InputText(default_text=int(temp_settings_query['max_len']), font=fontmid, key='max_len', s=(8, 0))
+            ],
+            [
                 sg.Text('Назад', key="-CLOSE-", enable_events=True, justification="l", expand_x=True,
                         font=fontbutton)
             ]
@@ -371,17 +487,27 @@ class Pages:
                 break
 
             elif event == "-CLOSE-" or event.startswith('Escape'):
-                # get values
+                text = values['max_len']
+                if text == '':
+                    self.settingswindow['max_len'].Update(baza.get_by_id(1337)['max_len'])
+                    continue
+                else:
+                    try:
+                        value = int(text)
+                    except:  # oops
+                        self.settingswindow['max_len'].Update(baza.get_by_id(1337)['max_len'])
+                        continue
+
                 temp_settings = {'search': True if values['search'] == 'По содержанию' else False,
                                  'hints': True if values['hints'] == 'Вкл' else False,
-                                 'jump': True if values['jump'] == 'Вкл' else False}
+                                 'jump': True if values['jump'] == 'Вкл' else False,
+                                 'max_len': values['max_len']}
 
                 baza.update_element_dict('1337', temp_settings)
-                temp_settings_query = baza.get_by_id("1337")
-                self.hints_type = temp_settings_query['hints']
-                self.jump_type = temp_settings_query['jump']
-                self.search_type = temp_settings_query['search']
-                # spui.settings_query
+                self.hints_type = temp_settings['hints']
+                self.jump_type = temp_settings['jump']
+                self.search_type = temp_settings['search']
+                self.prediction_len = int(temp_settings['max_len'])
                 self.settingswindow.close()
                 break
 
@@ -407,41 +533,107 @@ class Pages:
 
     @property
     def credentialspage(self):
-        credentials = [
+        choices = baza.get_unique_index_names("objects")
+
+        credentialslayout = [
             [sg.Text('Объект', font=fontbig)],
             [sg.Input(key='-OBJECT-', font=fontbig, enable_events=True, s=(25, 0))],
-            [sg.Submit('Дальше', size=(15, 0), button_color='green', font=fontbutton),
+            [sg.pin(sg.Col(
+                [[sg.Listbox(values=[], size=(80, 4), enable_events=True, key='-BOX-',
+                             select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                key='-BOX-CONTAINER-', pad=(0, 0), visible=True if self.hints_type else False))],
+            [sg.Button('Дальше', size=(15, 0), button_color='green', font=fontbutton),
              sg.Cancel('Отмена', button_color='red', font=fontbutton)]
         ]
-        self.credentialswindow = sg.Window('Выбор объекта', credentials, resizable=True,
-                                           element_justification="c")
+        self.credentialswindow = sg.Window('Выбор объекта', credentialslayout, resizable=True,
+                                           return_keyboard_events=True, element_justification="c")
         self.credentialswindow.Finalize()
         self.credentialswindow['-OBJECT-'].SetFocus(True)
+
+        list_element: sg.Listbox = self.credentialswindow.Element('-BOX-')
+        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+
         while True:
             event, values = self.credentialswindow.read()
 
-            if event == "Дальше":
-                if values['-OBJECT-'] != '':
-                    self.object = values["-OBJECT-"]
-                    self.credentialswindow.close()
-                    return 1
-                else:
-                    self.credentialswindow["-OBJECT-"].Update("")
-                    sg.Window('Ошибочка',
-                              [[sg.T('Заполните поле!', font=fontbig)], [sg.Button('Понял', font=fontbutton)]],
-                              element_justification="c", no_titlebar=True, size=(400, 100), auto_close=True,
-                              auto_close_duration=5).read(close=True)
-
-            elif event in ('Отмена', sg.WIN_CLOSED):
+            if event in ('Отмена', sg.WIN_CLOSED):
                 self.credentialswindow.close()
                 return 0
 
-    def addtspage(self, master, headername, ts_id=None):
-        global table1, table2
+            elif event == "Дальше" and values["-OBJECT-"]:
+                self.object = values["-OBJECT-"]
+                self.credentialswindow['-OBJECT-'].update('')
+                self.credentialswindow.close()
+                return 1
+
+            elif event.startswith('Escape'):
+                self.credentialswindow['-OBJECT-'].update('')
+
+            elif event.startswith('Down') and len(prediction_list):
+                sel_item = (sel_item + 1) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+            elif event.startswith('Up') and len(prediction_list):
+                sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+            elif event == '\r':
+                try:
+                    if self.hints_type:
+                        self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                        self.object = values['-BOX-'][0]
+                    else:
+                        self.object = values["-OBJECT-"]
+                    self.credentialswindow['-OBJECT-'].update('')
+
+                    self.credentialswindow.close()
+                    return 1
+                except IndexError:
+                    self.object = values["-OBJECT-"]
+                    self.credentialswindow['-OBJECT-'].update('')
+
+                    self.credentialswindow.close()
+                    return 1
+
+            elif event == '-OBJECT-':
+                text = values['-OBJECT-'].lower()
+                if text == input_text:
+                    continue
+                else:
+                    input_text = text
+                prediction_list = []
+                if text and self.hints_type:
+                    cnt = 0
+                    if self.search_type:
+                        for item in choices:
+                            if item.lower().__contains__(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
+                    else:
+                        for item in choices:
+                            if item.lower().startswith(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
+
+                list_element.update(values=prediction_list)
+                sel_item = 0
+                list_element.update(set_to_index=sel_item)
+
+            elif event == '-BOX-' and values['-BOX-']:
+                # fix
+                self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+
+    def addtspage(self, master, headername, ts_id=(None, None)):
+        global table1, table2, shortcut_state
         window_saved = False
         sel_item = 0
-        col_widths = list(map(lambda x: len(x) + 2, headings))  # find the widths of columns in character.
+        col_widths = list(map(lambda x: len(x) + 2, headings))
         tabledata = []
+        event_list = ['name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'rgg', 'rggpp']
         addtspage = [
             [sg.Column(
                 [[sg.Text('Объект', font=fontmid), sg.InputText(key='object', default_text=self.object, disabled=True,
@@ -533,6 +725,12 @@ class Pages:
         self.addtswindow['name'].SetFocus(True)
         self.get_choices()
 
+        if not shortcut_state:
+            shortcut_state = True
+            self.addtswindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+        self.addtswindow.bind("<<MySave>>", "_SAVE_")
+        self.addtswindow.bind("<<MyClear>>", "Очистить")
+
         table = self.addtswindow['-TABLE-']
         table_widget = table.Widget
 
@@ -561,17 +759,16 @@ class Pages:
 
         if master == "editor":
             self.fun_vieweditor()
-            if ts_id is not None:
-                self.addtswindow['_SAVE_'].Update('Сохранить в БД')
+            if ts_id != (None, None):
+                if ts_id[1] == 0:
+                    self.addtswindow['_SAVE_'].Update('Сохранить в БД')
+                    self.addtswindow["bd_delete"].Update(visible=True)
             if self.tsavailable == ["Комплект", "Составная часть", "Элемент"]:
                 table1 = self.tsdata[12]
             if self.tsavailable == ["Составная часть", "Элемент"]:
                 table2 = self.tsdata[12]
             self.last_event = "name"
-            if ts_id is not None:
-                self.addtswindow["bd_delete"].Update(visible=True)
-
-            self.resize_and_update_table(replace_bool(self.tsdata[12]))
+            self.resize_and_update_table(self.tsdata[12])
 
         if master == True:
             self.addtswindow['_SAVE_'].Update('Добавить в БД')
@@ -585,42 +782,46 @@ class Pages:
                 self.input_text = text
                 self.predictions_list = []
                 if text:
+                    cnt = 0
                     if self.search_type:
-                        self.predictions_list = [item for item in choices if item.lower().__contains__(text)]
+                        for itm in choices:
+                            if itm.lower().__contains__(text):
+                                self.predictions_list.append(itm)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
                     else:
-                        self.predictions_list = [item for item in choices if item.lower().startswith(text)]
+                        for itm in choices:
+                            if itm.lower().startswith(text):
+                                self.predictions_list.append(itm)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
+
                 if len(self.predictions_list) == 1:
                     if text == self.predictions_list[0].lower():
                         self.predictions_list = []
+
                 list_element.update(values=self.predictions_list)
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
-            # print(self.predictions_list)
+
             if len(self.predictions_list) > 0:
                 self.addtswindow[container].update(visible=True)
             else:
                 self.addtswindow[container].update(visible=False)
                 self.addtswindow[f'-BOX{index}-'].update('')
 
-        event_list = ['name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'rgg', 'rggpp']
-
         while True:
             event, values = self.addtswindow.read()
 
-            if event == sg.WIN_CLOSED:
-                self.addtswindow.close()
-                if self.tsavailable == ["Комплект", "Составная часть", "Элемент"]:
+            if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-" or event.startswith('Escape'):
+                print('tsdata ', self.tsdata)  # merge tsdata in view\edit mode
+                if self.tsavailable == ["Комплект", "Составная часть", "Элемент"] and not master:
                     table1.clear()
-                else:
+                elif self.tsavailable == ["Составная часть", "Элемент"] and not master:
                     table2.clear()
-                break
-
-            elif event == "-CloseAddTsPage-" or event.startswith('Escape'):
-                if values["level"] == "Комплект" and not master:
-                    table1.clear()
-                if values["level"] == "Составная часть" and not master:
-                    table2.clear()
-                if not window_saved:
+                if not window_saved and event is not sg.WIN_CLOSED:
                     if not popup_yes_no('Уверены что хотите выйти без сохранения?'):
                         continue
                 self.addtswindow.close()
@@ -639,18 +840,29 @@ class Pages:
                     if len(values[f'-BOX{self.last_event}-']) > 0:
                         self.addtswindow[self.last_event].update(value=values[f'-BOX{self.last_event}-'][0])
                         self.addtswindow[f'-CONTAINER{self.last_event}-'].update(visible=False)
+                        self.addtswindow[f'-BOX{self.last_event}-'].update('')
+                        continue
 
                 if self.jump_type:
                     try:
                         get_focused_elementname = self.addtswindow.find_element_with_focus().Key
-                        self.addtswindow[event_list[0 if get_focused_elementname == 'rggpp' else event_list.index(
-                            get_focused_elementname) + 1]].SetFocus(True)
-                    except AttributeError:
-                        pass
-                        # edit ts bugfix
+                        next_element = event_list[0 if get_focused_elementname == 'rggpp' else event_list.index(
+                            get_focused_elementname) + 1]
+                        self.addtswindow[next_element].set_focus()
+                        self.addtswindow[next_element].Widget.icursor('end')
 
-            elif event in ('name', 'model', 'part', 'vendor') and self.hints_type \
-                    :
+                    except AttributeError:
+                        print('AttError')
+                        pass
+                    except ValueError:
+                        print('ValError')
+                        pass
+
+            elif event.startswith('-BOX') and values[event]:
+                self.addtswindow[self.last_event].update(value=values[event][0])
+                self.addtswindow[f'-CONTAINER{self.last_event}-'].update(visible=False)
+
+            elif event in ('name', 'model', 'part', 'vendor') and self.hints_type:
                 self.last_event = event
                 list_element: sg.Listbox = self.addtswindow.Element(f'-BOX{event}-')
                 make_predictions(event, f'-CONTAINER{event}-')
@@ -668,11 +880,11 @@ class Pages:
 
             elif event == "-ADDMORE-":
                 window_saved = False
-                # вызов нового окна, обработка его возращаемного значения и добавление в таблицу
                 page2 = Pages()
                 page3 = Pages()
 
                 if values["level"] == "Комплект":
+                    table2.clear()
                     page2.tsavailable = ["Составная часть", "Элемент"]
                     page2.object = self.object
 
@@ -695,31 +907,135 @@ class Pages:
                     self.addtswindow["part"].update("", disabled=False)
 
             elif event == "_SAVE_":
-                # if master in ('slave', 'editor'):
-                if master == 'slave' or (master == 'editor' and ts_id is None):
-                    self.tsdata = self.get_tsvalues(values)
-                    sg.popup_no_frame(f'"{values["name"]}" изменён.', auto_close_duration=1,
-                                      auto_close=True, font=fontbig, button_type=5)
+                if values['name'] or values['model'] or values['part'] or values['vendor']:
+                    validation_state = True
+                    # user input validation
 
-                elif master == 'editor' and ts_id is not None:
-                    baza.update_element(ts_id, self.get_tsvalues(values))
-                    sg.popup_no_frame(f'"{values["name"]}" добавлен в базу.', auto_close_duration=1,
-                                      auto_close=True, font=fontbig, button_type=5)
+                    # int validation
+                    int_val = (123, 'СЗЗ 1')
+                    try:
+                        int_val = (int(values['serial1'] if values['serial1'] != '' else 0), 'СЗЗ 2')
+                        int_val = (int(values['serial2'] if values['serial2'] != '' else 0), 'Кол-во')
+                        int_val = (int(values['amount'] if values['amount'] != '' else 0), 'ГР ПП')
+                        int_val = (int(values['rggpp'] if values['rggpp'] != '' else 0), 'а как?')
+                    except ValueError:
+                        sg.popup_no_frame(f'Поле "{int_val[1]}" принимает только числовые значения!.',
+                                          auto_close_duration=1,
+                                          auto_close=True, font=fontbig, button_type=5)
+                        continue
 
-                elif master == True:  # ♂oh shit im sorry♂
-                    if values['name'] or values['model'] or values['part'] or values['vendor']:
+                    if table1 and not ts_id[1]:  # insides check
+                        table_partdata = []
+                        table_serialdata = []
+                        for item in table1:
+                            if item[3] in table_partdata and item[3] != '' and item[3] != 'б/н':
+                                if popup_yes_no(
+                                        f'Серийный номер "{item[3]}"\nуже существует в таблице!\n'
+                                        f'Вы действительно хотите использовать дубликат?'):
+                                    pass
+                                else:
+                                    validation_state = False
+                                    continue
+                            else:
+                                table_partdata.append(item[3])
+
+                            if item[5] in table_serialdata and item[5] != '':
+                                if popup_yes_no(
+                                        f'СЗЗ "{item[5]}"\nуже существует в таблице!\n'
+                                        f'Вы действительно хотите использовать дубликат?'):
+                                    pass
+                                else:
+                                    validation_state = False
+                                    continue
+                            else:
+                                table_serialdata.append(item[5])
+
+                            if item[12]:
+                                for item1 in item[12]:
+                                    if item1[3] in table_partdata and item1[3] != '' and item1[3] != 'б/н':
+                                        if popup_yes_no(
+                                                f'Серийный номер "{item1[3]}"\nуже существует в таблице!\n'
+                                                f'Вы действительно хотите использовать дубликат?'):
+                                            pass
+                                        else:
+                                            validation_state = False
+                                            continue
+                                    else:
+                                        table_partdata.append(item1[3])
+
+                                    if item1[5] in table_serialdata and item1[5] != '':
+                                        if popup_yes_no(
+                                                f'СЗЗ "{item1[5]}"\nуже существует в таблице!\n'
+                                                f'Вы действительно хотите использовать дубликат?'):
+                                            pass
+                                        else:
+                                            validation_state = False
+                                            continue
+                                    else:
+                                        table_serialdata.append(item1[5])
+
+                        table_partdata.clear()
+                        table_serialdata.clear()
+
+                    if values['part'] and values['part'] != 'б/н':
+                        names = baza.get_index_names('parts')
+
+                        for item in names:
+                            if values['part'] == item[1]:
+                                if ts_id[0] == item[0]:  # edit check
+                                    pass
+                                else:
+                                    answer = popup_yes_no(
+                                        f'Серийный номер "{values["part"]}"\nуже существует в базе!\n'
+                                        f'Вы действительно хотите его использовать?')
+                                    if answer:
+                                        pass
+                                    else:
+                                        validation_state = False
+                                        continue
+                    if values['serial1']:
+                        serials = baza.get_index_names('serials')
+
+                        for item in serials:
+                            if values['serial1'] == item[1]:
+                                if ts_id[0] == item[0]:  # edit check
+                                    continue
+                                else:
+                                    answer = popup_yes_no(
+                                        f"СЗЗ {values['serial1']}\nуже существует в базе!\n"
+                                        f"Вы действительно хотите его использовать?")
+                                    if answer:
+                                        pass
+                                    else:
+                                        validation_state = False
+                                        continue
+
+                    if not validation_state:
+                        continue
+
+                    if master == 'slave' or (master == 'editor' and (ts_id == (None, None) or ts_id[1] == 1)):
+                        self.tsdata = self.get_tsvalues(values)
+                        sg.popup_no_frame(f'"{values["name"]}" изменён.', auto_close_duration=1,
+                                          auto_close=True, font=fontbig, button_type=5)
+
+                    elif master == 'editor' and ts_id != (None, None) and ts_id[1] == 0:
+                        baza.update_element(ts_id[0], self.get_tsvalues(values))
+                        sg.popup_no_frame(f'"{values["name"]}" изменён в базе.', auto_close_duration=1,
+                                          auto_close=True, font=fontbig, button_type=5)
+
+                    elif master == True:  # ♂oh shit im sorry♂
                         baza.add(self.get_tsvalues(values))
                         sg.popup_no_frame(f'"{values["name"]}" добавлен в базу.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
 
-                else:
-                    if self.tsavailable == ["Составная часть", "Элемент"]:
-                        self.insert_values_into_table(self.get_tsvalues(values), table1)
-                    if self.tsavailable == ["Элемент"]:
-                        self.insert_values_into_table(self.get_tsvalues(values), table2)
-                    sg.popup_no_frame(f'"{values["name"]}" добавлен.', auto_close_duration=1,
-                                      auto_close=True, font=fontbig, button_type=5)
-                window_saved = True
+                    else:
+                        if self.tsavailable == ["Составная часть", "Элемент"]:
+                            self.insert_values_into_table(self.get_tsvalues(values), table1)
+                        if self.tsavailable == ["Элемент"]:
+                            self.insert_values_into_table(self.get_tsvalues(values), table2)
+                        sg.popup_no_frame(f'"{values["name"]}" добавлен.', auto_close_duration=1,
+                                          auto_close=True, font=fontbig, button_type=5)
+                    window_saved = True
 
             elif event == "Очистить":
                 if not window_saved:
@@ -729,6 +1045,8 @@ class Pages:
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1', 'rgg']
                 rmlist = []
                 window_saved = False
+
+                self.addtswindow['name'].set_focus()
 
                 for value in values:
                     if "SAVE" not in value and value not in whitelist:
@@ -752,12 +1070,15 @@ class Pages:
 
                 if "Комплект" in self.tsavailable:
                     table1.clear()
+                    table2.clear()
                     table.Update("")
+
                 if self.tsavailable == ["Составная часть", "Элемент"]:
                     table2.clear()
                     table.Update("")
 
-                table.expand(expand_x=True, expand_y=True)
+                if self.tsavailable != ['Элемент']:
+                    table.expand(expand_x=True, expand_y=True)
 
                 for cid in headings:
                     table_widget.column(cid, stretch=True)
@@ -768,46 +1089,43 @@ class Pages:
             elif event == "Удалить":
                 pos = int(values["-TABLE-"][0])
 
-                # if sg.PopupYesNo("Уверены что хотите удалить? ", auto_close_duration=7, auto_close=True) == "Yes":
                 if popup_yes_no('Вы уверены что хотите удалить?'):
                     if "Комплект" in self.tsavailable:
                         table1.pop(pos)
-                        # table.Update(table1)
                         self.resize_and_update_table(table1)
-                    # if self.tsavailable == ["Составная часть", "Элемент"]:
                     else:
                         table2.pop(pos)
-                        # table.Update(table2)
                         self.resize_and_update_table(table2)
 
-            elif event == "Редактировать":
+            elif event == "Редактировать" and values["-TABLE-"]:
                 pos = int(values["-TABLE-"][0])
                 tbl = table.Get()
                 slave = Pages()
+                slave.object = self.object
                 slave.tsdata = tbl[pos]
+
                 if values['level'] == "Комплект":
                     slave.tsavailable = ["Составная часть", "Элемент"]
+                    table2 = table1[pos][12].copy()
                 else:
                     slave.tsavailable = ["Элемент"]
 
                 if master == "editor":
-                    slave.addtspage(master="editor", headername="Редактирование элемента")
+                    slave.addtspage(master="editor", headername="Редактирование элемента", ts_id=(ts_id[0], 1))
                 else:
                     slave.addtspage(master="slave", headername="Редактирование элемента")
 
                 if slave.tsavailable == ["Составная часть", "Элемент"]:
                     table1[pos] = slave.tsdata
+
                     self.resize_and_update_table(table1)
-                    # table.Update(table1)
                 if slave.tsavailable == ["Элемент"]:
                     table2[pos] = slave.tsdata
                     self.resize_and_update_table(table2)
-                    # table.Update(table2)
 
             elif event == "bd_delete":
-                # if sg.PopupYesNo("Уверены что хотите удалить? ", auto_close_duration=7, auto_close=True) == "Yes":
                 if popup_yes_no('Вы уверены что хотите удалить?'):
-                    baza.delete_by_id(ts_id)
+                    baza.delete_by_id(ts_id[0])
                     self.addtswindow.close()
 
     def fun_slave(self):
@@ -820,10 +1138,11 @@ class Pages:
             self.addtswindow[element].update(toput)
 
     def get_choices(self):
-        self.choices_name = baza.get_unique_index_names('names')
-        self.choices_part = baza.get_unique_index_names('parts')
-        self.choices_model = baza.get_unique_index_names('models')
-        self.choices_vendor = baza.get_unique_index_names('vendors')
+        if self.hints_type:
+            self.choices_name = baza.get_unique_index_names('names')
+            self.choices_part = baza.get_unique_index_names('parts')
+            self.choices_model = baza.get_unique_index_names('models')
+            self.choices_vendor = baza.get_unique_index_names('vendors')
 
     def resize_and_update_table(self, data):
         table = self.addtswindow['-TABLE-']
@@ -838,7 +1157,6 @@ class Pages:
         temp_col = []
         for item in col_widths:
             headerwidth += item
-        # print(headerwidth)
         w, v = self.addtswindow.get_screen_dimensions()
         if w + 80 > headerwidth:
             resize = w - headerwidth
@@ -848,7 +1166,6 @@ class Pages:
                 temp_col.append(cols)
             col_widths.clear()
             col_widths = temp_col.copy()
-            # print(sum(col_widths))
 
         table.update(values=data)
 
@@ -899,6 +1216,11 @@ class Pages:
         dict_obj["table"] = temp
         return list(dict_obj.values())
 
+    def trim_table(self, dict_obj):
+        temp = dict_obj.copy()
+        del temp['table']
+        return temp
+
     def edit_ts_page(self, headername):
         def myFunc(e):
             return e[1]
@@ -924,7 +1246,8 @@ class Pages:
                     [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
                     [sg.pin(sg.Col(
                         [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
-                                     select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                                     select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=False, font=fontbig,
+                                     horizontal_scroll=True)]],
                         key='-BOX-CONTAINER-', pad=(0, 0)))]
                 ], justification="c", element_justification="c")
             ],
@@ -932,7 +1255,7 @@ class Pages:
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
                 sg.Button('Дополнительно', key="-EXTRAS-", font=fontbutton),
-                sg.Submit("Открыть", key="-OPEN-", font=fontbutton),
+                sg.Button("Открыть", key="-OPEN-", font=fontbutton),
             ]
         ]
 
@@ -941,40 +1264,66 @@ class Pages:
         self.edittswidow.Maximize()
 
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
-        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+        list_element.TKListbox.configure(activestyle='none')  # remove underline
+        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item = [], [], "", "", "", 0
+        radid = ("objects", "names", "models", "parts", "vendors", "serials")
+
+        def get_active_radio(val):
+            for rad in radid:
+                if val[rad]:
+                    return rad
+
+        def make_prediction(text, radio):
+            prediction_list.clear()
+            prediction_ids.clear()
+            if text:
+                cnt = 0
+                if self.search_type:
+                    for item in choices:
+                        if item[1].lower().__contains__(text):
+                            prediction_list.append(
+                                f"{item[1]} {baza.get_display_values(item[0], radid.index(radio))}")
+                            prediction_ids.append(item[0])
+                            cnt += 1
+                            if cnt == self.prediction_len:
+                                break
+                else:
+                    for item in choices:
+                        if item[1].lower().startswith(text):
+                            prediction_list.append(
+                                f"{item[1]} {baza.get_display_values(item[0], radid.index(radio))}")
+                            prediction_ids.append(item[0])
+                            cnt += 1
+                            if cnt == self.prediction_len:
+                                break
+
+            list_element.update(values=prediction_list)
+            list_element.update(set_to_index=sel_item)
+
+        def open_editwindow(it_id):
+            if it_id:
+                obj = baza.get_by_id(it_id)
+                editor = Pages()
+                editor.tsdata = self.dict_2_list(obj)
+                editor.object = editor.tsdata[0]
+                editor.addtspage(master="editor", headername="Редактирование и просмотр ТС",
+                                 ts_id=(it_id, 0))
+                table1.clear()
+                table2.clear()
 
         while True:
             event, values = self.edittswidow.read()
 
             if event == "-OPEN-" and values["-IN-"]:
-                if prediction_ids:
-                    obj = baza.get_by_id(prediction_ids[sel_item])
-                    editor = Pages()
-                    editor.tsdata = self.dict_2_list(obj)
-                    editor.object = editor.tsdata[0]
-                    editor.addtspage(master="editor", headername="Редактирование и просмотр ТС",
-                                     ts_id=prediction_ids[sel_item])
-                    # if baza.search_by_id_if_exists(prediction_ids[sel_item]):
-                    #     baza.update_element(prediction_ids[sel_item], editor.tsdata)
-                    table1.clear()
-                    table2.clear()
-                    for radio in ("objects", "names", "models", "parts", "vendors", "serials"):
-                        if values[radio]:
-                            choices = baza.get_index_names(radio)
-                            choices.sort(key=myFunc)
-                    if self.search_type:
-                        prediction_list = [f"{item[1]} {baza.get_display_values(item[0])}"
-                                           for item in choices if item[1].lower().__contains__(values['-IN-'].lower())]
-                        prediction_ids = [item[0] for item in choices if
-                                          item[1].lower().__contains__(values['-IN-'].lower())]
-                    else:
-                        prediction_list = [f"{item[1]} {baza.get_display_values(item[0])}"
-                                           for item in choices if item[1].lower().startswith(values['-IN-'].lower())]
-                        prediction_ids = [item[0] for item in choices if
-                                          item[1].lower().startswith(values['-IN-'].lower())]
-                    list_element.update(values=prediction_list)
-                    sel_item = 0
-                    list_element.update(set_to_index=sel_item)
+                if len(values['-BOX-']) > 0:
+                    item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
+                    open_editwindow(item_id)
+                    radio = get_active_radio(values)
+
+                    choices = baza.get_index_names(radio)
+                    choices.sort(key=myFunc)
+
+                    make_prediction(values['-IN-'].lower(), radio)
 
             elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.edittswidow.close()
@@ -982,46 +1331,70 @@ class Pages:
 
             elif event.startswith('Escape'):
                 self.edittswidow['-IN-'].update('')
+
             elif event.startswith('Down') and len(prediction_list):
                 sel_item = (sel_item + 1) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event.startswith('Up') and len(prediction_list):
                 sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
-                    self.edittswidow['-IN-'].update(value=values['-BOX-'])
+                    item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
+                    open_editwindow(item_id)
+                    radio = get_active_radio(values)
+
+                    choices = baza.get_index_names(radio)
+                    choices.sort(key=myFunc)
+
+                    make_prediction(values['-IN-'].lower(), radio)
+
             elif event == '-IN-':
                 text = values['-IN-'].lower()
                 if text == input_text:
                     continue
                 else:
                     input_text = text
-                prediction_list = []
-                prediction_ids = []
-                if text:
-                    if self.search_type:
-                        prediction_list = [f"{item[1]} {baza.get_display_values(item[0])}"
-                                           for item in choices if item[1].lower().__contains__(text)]
-                        prediction_ids = [item[0] for item in choices if item[1].lower().__contains__(text)]
-                    else:
-                        prediction_list = [f"{item[1]} {baza.get_display_values(item[0])}"
-                                           for item in choices if item[1].lower().startswith(text)]
-                        prediction_ids = [item[0] for item in choices if item[1].lower().startswith(text)]
 
-                list_element.update(values=prediction_list)
-                sel_item = 0
-                list_element.update(set_to_index=sel_item)
+                make_prediction(text, get_active_radio(values))
 
-            elif event == '-BOX-':
-                self.edittswidow['-IN-'].update(value=values['-BOX-'])
+            elif event == '-BOX-' and values['-BOX-']:
+                curs_pos = list_element.TKListbox.curselection()[0]
+                item_id = prediction_ids[curs_pos]
+                open_editwindow(item_id)
+                radio = get_active_radio(values)
 
-            elif event in ("objects", "names", "models", "parts", "vendors", "serials"):
+                choices = baza.get_index_names(radio)
+                choices.sort(key=myFunc)
+
+                make_prediction(values['-IN-'].lower(), radio)
+
+                list_element.update(set_to_index=curs_pos, scroll_to_index=curs_pos)
+
+            elif event in radid:
                 choices = baza.get_index_names(event)
                 choices.sort(key=myFunc)
 
+                self.edittswidow['-IN-'].update("")
+                prediction_list, item_id = [], ""
+                list_element.update(values=prediction_list)
+                sel_item = 0
+
             elif event == '-EXTRAS-':
-                popup_input_text_with_hints('test1', 'Изменение названия и удаление')
+                popup_input_text_with_hints('Изменение объекта', 'Изменение объекта')
+
+                self.edittswidow['-IN-'].update("")
+                prediction_list, item_id = [], ""
+                list_element.update(values=prediction_list)
+                sel_item = 0
+                radio = get_active_radio(values)
+
+                choices = baza.get_index_names(radio)
+                choices.sort(key=myFunc)
+
+                make_prediction(values['-IN-'].lower(), radio)
 
         self.edittswidow.close()
 
@@ -1051,7 +1424,7 @@ class Pages:
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
         list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
-        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+        prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
 
         while True:
@@ -1063,15 +1436,19 @@ class Pages:
 
             elif event.startswith('Escape'):
                 self.exportwordwindow['-IN-'].update('')
+
             elif event.startswith('Down') and len(prediction_list):
                 sel_item = (sel_item + 1) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event.startswith('Up') and len(prediction_list):
                 sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
                     self.exportwordwindow['-IN-'].update(value=values['-BOX-'][0])
+
             elif event == '-IN-':
                 text = values['-IN-'].lower()
                 if text == input_text:
@@ -1080,10 +1457,21 @@ class Pages:
                     input_text = text
                 prediction_list = []
                 if text:
+                    cnt = 0
                     if self.search_type:
-                        prediction_list = [item for item in choices if item.lower().__contains__(text)]
+                        for item in choices:
+                            if item.lower().__contains__(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
                     else:
-                        prediction_list = [item for item in choices if item.lower().startswith(text)]
+                        for item in choices:
+                            if item.lower().startswith(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
 
                 list_element.update(values=prediction_list)
                 sel_item = 0
@@ -1135,7 +1523,7 @@ class Pages:
         self.importwindow.Maximize()
 
         list_element: sg.Listbox = self.importwindow.Element('-BOX-')
-        prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+        prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
 
         while True:
@@ -1147,15 +1535,19 @@ class Pages:
 
             elif event.startswith('Escape'):
                 self.importwindow['-IN-'].update('')
+
             elif event.startswith('Down') and len(prediction_list):
                 sel_item = (sel_item + 1) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event.startswith('Up') and len(prediction_list):
                 sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
                     self.importwindow['-IN-'].update(value=values['-BOX-'][0])
+
             elif event == '-IN-':
                 text = values['-IN-'].lower()
                 if text == input_text:
@@ -1164,10 +1556,21 @@ class Pages:
                     input_text = text
                 prediction_list = []
                 if text:
+                    cnt = 0
                     if self.search_type:
-                        prediction_list = [item for item in choices if item.lower().__contains__(text)]
+                        for item in choices:
+                            if item.lower().__contains__(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
                     else:
-                        prediction_list = [item for item in choices if item.lower().__contains__(text)]
+                        for item in choices:
+                            if item.lower().startswith(text):
+                                prediction_list.append(item)
+                                cnt += 1
+                                if cnt == self.prediction_len:
+                                    break
 
                 list_element.update(values=prediction_list)
                 sel_item = 0
@@ -1177,15 +1580,16 @@ class Pages:
                 if baza.search_if_exists("$.object", values['-IN-']):
                     objects = baza.search("$.object", values['-IN-'])
                     path = sg.popup_get_folder('NAVI bomji', no_window=True)
-                    with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
-                        f.truncate(0)
-                        json.dump(objects, f)
-                        sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
+                    if path and path is not None:
+                        with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
+                            f.truncate(0)
+                            json.dump(objects, f)
+                            sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
+                                              auto_close=True, font=fontbig, button_type=5)
 
             elif event == '-IMPORT-':
                 file_path = sg.popup_get_file("file search", file_types=(("JSON", "*.json "),), no_window=True)
-                if file_path is not None:
+                if file_path is not None and '.json' in file_path:
                     def change_obj(what, to):
                         temp = what.copy()
                         temp['object'] = to
@@ -1197,17 +1601,116 @@ class Pages:
                                         item2['table'] = to
                         return temp
 
-                    with open(f"{values['-IN-']}.json", "r") as file:
-                        file_content = json.load(file)
-                        for content in file_content:
-                            if not baza.search_by_id_if_exists(content[0]):
-                                if values["-IN-"]:
-                                    baza.add(change_obj(content[1], values["-IN-"]))
-                                else:
-                                    baza.add(content[1])
+                    def search_if_item_in_index(item, index_values):
+                        if item and item != "" and item is not None and item != 'б/н':
+                            return True if item in index_values else False
 
-                    sg.popup_no_frame(f'"{values["-IN-"]}" импортирован.', auto_close_duration=1,
-                                      auto_close=True, font=fontbig, button_type=5)
+                    def duplicate_actions(obj_content, name):
+                        full_name = "серийный номер" if name == "part" else "СЗЗ"
+                        pop_answer = popup_yes_no(
+                            f'Найден дубликат: {full_name}. \n\n'
+                            f'Наименование - {str(obj_content["name"])}\n'
+                            f'Модель - {str(obj_content["model"])}\n'
+                            f'SN - {str(obj_content["part"])}\n'
+                            f'Производитель - {str(obj_content["vendor"])}\n'
+                            f'СЗЗ - {str(obj_content["serial1"])}\n\n'
+                            f'Вы хотите его изменить?')
+                        if pop_answer:
+                            # entered_text = popup_input_text(f'Изменение {full_name}')
+                            pass_state = True
+                            while pass_state is True:
+                                # pass_state = False
+                                entered_text = popup_input_text(f'Изменение "{full_name}"')
+                                if entered_text is None:
+                                    pass_state = False
+                                    return False
+                                elif entered_text not in baza.get_unique_index_names(
+                                        "parts" if name == 'part' else 'serials') and entered_text != "":
+                                    obj_content[name] = entered_text
+                                    pass_state = False
+                                else:
+                                    sg.popup_no_frame(
+                                        f'Введённый вами номер уже есть в базе!',
+                                        auto_close_duration=1,
+                                        auto_close=True, font=fontbig, button_type=5)
+                                    pass_state = True
+
+                            return True
+                        else:
+                            return False
+
+                    with open(f"{file_path}", "r", encoding="utf8") as file:
+                        file_content = json.load(file)
+
+                        for content in file_content:
+                            obj_id = content[0]
+                            obj_body = content[1]
+                            parts_index = baza.get_unique_index_names('parts')
+                            serials_index = baza.get_unique_index_names('serials')
+                            save_state = True
+
+                            if not baza.search_by_id_if_exists(obj_id):
+                                if search_if_item_in_index(obj_body['part'], parts_index) and save_state:
+                                    save_state = duplicate_actions(obj_body, 'part')
+
+                                if obj_body['table'] and save_state:
+                                    for item in obj_body['table']:
+                                        if search_if_item_in_index(item['part'], parts_index) and save_state:
+                                            save_state = duplicate_actions(item, 'part')
+
+                                        if item['table']:
+                                            for item1 in item['table']:
+                                                if search_if_item_in_index(item1['part'], parts_index) and save_state:
+                                                    save_state = duplicate_actions(item1, 'part')
+
+                                if search_if_item_in_index(obj_body['serial1'], serials_index) and save_state:
+                                    save_state = duplicate_actions(obj_body, 'serial1')
+
+                                if obj_body['table'] and save_state:
+                                    for item in obj_body['table']:
+                                        if search_if_item_in_index(item['serial1'], serials_index) and save_state:
+                                            save_state = duplicate_actions(item, 'serial1')
+
+                                        if item['table']:
+                                            for item1 in item['table']:
+                                                if search_if_item_in_index(item1['serial1'],
+                                                                           serials_index) and save_state:
+                                                    save_state = duplicate_actions(item1, 'serial1')
+
+                                if save_state:
+                                    if values["-IN-"]:
+                                        baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
+                                    else:
+                                        baza.add_dict(obj_body, obj_id)
+                                    sg.popup_no_frame(
+                                        f'"{str(obj_body["name"])}"'
+                                        f'{str(obj_body["model"])}\n'
+                                        f'{str(obj_body["part"])}'
+                                        f'{str(obj_body["vendor"])}'
+                                        f'\nимпортирован.',
+                                        auto_close_duration=1,
+                                        auto_close=True, font=fontbig, button_type=5)
+
+                            else:
+                                sg.popup_no_frame(
+                                    f'Наименование - {str(obj_body["name"])}\n'
+                                    f'Модель - {str(obj_body["model"])}\n'
+                                    f'SN - {str(obj_body["part"])}\n'
+                                    f'Производитель - {str(obj_body["vendor"])}\n'
+                                    f'СЗЗ - {str(obj_body["serial1"])}\n\n'
+                                    f'\nуже существует.',
+                                    auto_close_duration=1,
+                                    auto_close=True, font=fontbig, button_type=5)
+
+                                # С подтверждением
+                                # popup_yes_no(
+                                #     f'Наименование - {str(obj_body["name"])}\n'
+                                #     f'Модель - {str(obj_body["model"])}\n'
+                                #     f'SN - {str(obj_body["part"])}\n'
+                                #     f'Производитель - {str(obj_body["vendor"])}\n'
+                                #     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
+                                #     f'Уже существует, продолжить?')
+                                # pass
 
         self.importwindow.close()
 
@@ -1218,6 +1721,7 @@ class SpUi:
         pages = Pages()
         sg.theme('DarkAmber')
         pages.mainpage()
+        global shortcut_state
 
         while True:  # MainPage
             event, values = pages.window.read()
@@ -1228,32 +1732,35 @@ class SpUi:
                     pages.addtspage(master=True, headername="Добавление технического средства")
                     table1.clear()
                     table2.clear()
+                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Edit-":
                 pages.window.Hide()
                 pages.edit_ts_page("Редактирование")
 
+                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Export-":
                 pages.window.Hide()
                 pages.word_output_page("Экспорт в Word")
 
+                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Import-":
                 pages.window.Hide()
                 pages.import_page("Импорт и экспорт")
 
+                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Settings-":
                 pages.window.Hide()
                 pages.settingspage()
-                # settings_query = baza.get_by_id("1337")
-                # print('updated settings ', settings_query)
 
+                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == sg.WIN_CLOSED:
