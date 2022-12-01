@@ -9,7 +9,6 @@ headings = ['Объект', 'Наименование', 'Модель', 'Сер�
             'РГ', 'РГ пп', 'Признак', 'Состав']
 table1, table2 = [], []
 last_event = ""
-shortcut_state = False
 fontbig = ("Arial", 24)
 fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
@@ -95,6 +94,8 @@ def popup_input_text(main_text='Заглушка'):
     ]
     popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True).Finalize()
     popupwin['-IN-'].SetFocus(True)
+    if "<Key>" not in popupwin.TKroot.bind_all():
+        popupwin.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
     while True:
         event, values = popupwin.read()
@@ -149,6 +150,8 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     hintedinputwindow = sg.Window(headername, hintedinputlayout, resizable=True, return_keyboard_events=True,
                                   element_justification="").Finalize()
     hintedinputwindow.Maximize()
+    if "<Key>" not in hintedinputwindow.TKroot.bind_all():
+        hintedinputwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
     list_element: sg.Listbox = hintedinputwindow.Element('-BOX-')
     prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
@@ -511,26 +514,6 @@ class Pages:
                 self.settingswindow.close()
                 break
 
-    def addaddpage(self):
-        addpage = [
-            [sg.Button('Добавить проверенное ТС', key="-AddTs-", enable_events=True,
-                       expand_x=True,
-                       expand_y=True,
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       pad=(30, 30),
-                       font=fontbig)],
-            [sg.Button('Назад', key="-CloseAddPage-", enable_events=True,
-                       expand_x=True,
-                       s=(30, 5),
-                       button_color=(sg.theme_text_color(), sg.theme_background_color()),
-                       border_width=0,
-                       pad=(30, 30),
-                       font=fontbig)]
-        ]
-        self.addwindow = sg.Window('AddPage', addpage, resizable=True, element_justification="c").Finalize()
-
     @property
     def credentialspage(self):
         choices = baza.get_unique_index_names("objects")
@@ -549,6 +532,8 @@ class Pages:
                                            return_keyboard_events=True, element_justification="c")
         self.credentialswindow.Finalize()
         self.credentialswindow['-OBJECT-'].SetFocus(True)
+        if "<Key>" not in self.credentialswindow.TKroot.bind_all():
+            self.credentialswindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.credentialswindow.Element('-BOX-')
         prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
@@ -577,7 +562,7 @@ class Pages:
                 sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
 
-            elif event == '\r':
+            elif event == '\r' and values["-OBJECT-"]:
                 try:
                     if self.hints_type:
                         self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
@@ -628,7 +613,7 @@ class Pages:
                 self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
 
     def addtspage(self, master, headername, ts_id=(None, None)):
-        global table1, table2, shortcut_state
+        global table1, table2
         window_saved = False
         sel_item = 0
         col_widths = list(map(lambda x: len(x) + 2, headings))
@@ -725,8 +710,7 @@ class Pages:
         self.addtswindow['name'].SetFocus(True)
         self.get_choices()
 
-        if not shortcut_state:
-            shortcut_state = True
+        if "<Key>" not in self.addtswindow.TKroot.bind_all():
             self.addtswindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
         self.addtswindow.bind("<<MySave>>", "_SAVE_")
         self.addtswindow.bind("<<MyClear>>", "Очистить")
@@ -756,6 +740,9 @@ class Pages:
         # fucking slaves get your ass back here
         if master == "slave":
             self.fun_slave()
+            if self.tsdata[3] == 'б/н':
+                self.addtswindow["part"].update("б/н", disabled=True)
+                self.addtswindow['nopart'].update(True)
 
         if master == "editor":
             self.fun_vieweditor()
@@ -769,6 +756,9 @@ class Pages:
                 table2 = self.tsdata[12]
             self.last_event = "name"
             self.resize_and_update_table(self.tsdata[12])
+            if self.tsdata[3] == 'б/н':
+                self.addtswindow["part"].update("б/н", disabled=True)
+                self.addtswindow['nopart'].update(True)
 
         if master == True:
             self.addtswindow['_SAVE_'].Update('Добавить в БД')
@@ -1262,6 +1252,8 @@ class Pages:
         self.edittswidow = sg.Window(headername, editlayout, resizable=True, return_keyboard_events=True,
                                      element_justification="").Finalize()
         self.edittswidow.Maximize()
+        if "<Key>" not in self.edittswidow.TKroot.bind_all():
+            self.edittswidow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')  # remove underline
@@ -1424,6 +1416,9 @@ class Pages:
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
         list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
+        if "<Key>" not in self.exportwordwindow.TKroot.bind_all():
+            self.exportwordwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
         prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
 
@@ -1521,6 +1516,8 @@ class Pages:
         self.importwindow = sg.Window(headername, importlayout, resizable=True, return_keyboard_events=True,
                                       element_justification="").Finalize()
         self.importwindow.Maximize()
+        if "<Key>" not in self.importwindow.TKroot.bind_all():
+            self.importwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.importwindow.Element('-BOX-')
         prediction_list, input_text, sel_item = [], "", 0
@@ -1721,7 +1718,6 @@ class SpUi:
         pages = Pages()
         sg.theme('DarkAmber')
         pages.mainpage()
-        global shortcut_state
 
         while True:  # MainPage
             event, values = pages.window.read()
@@ -1732,35 +1728,31 @@ class SpUi:
                     pages.addtspage(master=True, headername="Добавление технического средства")
                     table1.clear()
                     table2.clear()
-                shortcut_state = False
+
                 pages.window.UnHide()
 
             elif event == "-Edit-":
                 pages.window.Hide()
                 pages.edit_ts_page("Редактирование")
 
-                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Export-":
                 pages.window.Hide()
                 pages.word_output_page("Экспорт в Word")
 
-                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Import-":
                 pages.window.Hide()
                 pages.import_page("Импорт и экспорт")
 
-                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == "-Settings-":
                 pages.window.Hide()
                 pages.settingspage()
 
-                shortcut_state = False
                 pages.window.UnHide()
 
             elif event == sg.WIN_CLOSED:
