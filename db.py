@@ -67,14 +67,6 @@ class DataBase:
     def get_by_id(self, itemid):
         return db.get(itemid)
 
-    def get_display_values(self, itemid, radio):
-        response = db.get(itemid)
-        if response is not None:
-            output = [response['object'], response['name'], response['model'], response['part'], response['vendor'],
-                      response['serial1']]
-            output.pop(radio)
-            return ' '.join(output)
-
     def update_element(self, docid, doc):
         with db:
             db.update(docid, self.makejson(doc))

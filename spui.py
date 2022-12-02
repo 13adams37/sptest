@@ -796,11 +796,11 @@ class Pages:
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
 
-            if len(self.predictions_list) > 0:
-                self.addtswindow[container].update(visible=True)
-            else:
-                self.addtswindow[container].update(visible=False)
-                self.addtswindow[f'-BOX{index}-'].update('')
+                if len(self.predictions_list) > 0:
+                    self.addtswindow[container].update(visible=True)
+                else:
+                    self.addtswindow[container].update(visible=False)
+                    self.addtswindow[f'-BOX{index}-'].update('')
 
         while True:
             event, values = self.addtswindow.read()
@@ -1269,7 +1269,7 @@ class Pages:
             if response is not None:
                 output = [response['object'], response['name'], response['model'], response['part'], response['vendor'],
                           response['serial1']]
-                return ' '.join(output)
+                return ' '.join(output).split()
 
         def make_prediction(text, index_name='names'):
             prediction_list.clear()
