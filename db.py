@@ -1,5 +1,3 @@
-import uuid
-
 import jsondblite
 
 try:
@@ -103,7 +101,6 @@ class DataBase:
     def all_trim_json(self, what):
         if type(what) == list:
             for item in what:
-                print(item)
                 self.base_trim_string(item)
                 if item['table']:
                     for item1 in item['table']:

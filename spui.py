@@ -1265,28 +1265,78 @@ class Pages:
                 if val[rad]:
                     return rad
 
-        def make_prediction(text, radio):
+        def get_displyed(response):
+            if response is not None:
+                output = [response['object'], response['name'], response['model'], response['part'], response['vendor'],
+                          response['serial1']]
+                return ' '.join(output)
+
+        def make_prediction(text, index_name='names'):
             prediction_list.clear()
             prediction_ids.clear()
+
+            index = index_name
+            index_name = 'serial1' if index_name == 'serials' else index_name[:-1]
+            prev_id = ""
+
             if text:
-                cnt = 0
+                cnt = 0  # counter
                 if self.search_type:
-                    for item in choices:
-                        if item[1].lower().__contains__(text):
-                            prediction_list.append(
-                                f"{item[1]} {baza.get_display_values(item[0], radid.index(radio))}")
-                            prediction_ids.append(item[0])
-                            cnt += 1
-                            if cnt == self.prediction_len:
+                    for content in db.db.get_index_values(index):
+                        if content[1].lower().__contains__(text) and content[0] != prev_id:
+                            content_id = content[0]
+                            prev_id = content_id
+                            main_content = db.db[content_id]
+
+                            if main_content[index_name].lower().__contains__(text):
+                                prediction_list.append(get_displyed(main_content))
+                                prediction_ids.append(content_id)
+                                cnt += 1
+
+                            if main_content['table']:
+                                for element_1 in main_content['table']:
+                                    if element_1[index_name].lower().__contains__(text):
+                                        prediction_list.append(get_displyed(element_1))
+                                        prediction_ids.append(content_id)
+                                        cnt += 1
+
+                                    if element_1['table']:
+                                        for element_2 in element_1['table']:
+                                            if element_2[index_name].lower().__contains__(text):
+                                                prediction_list.append(get_displyed(element_2))
+                                                prediction_ids.append(content_id)
+                                                cnt += 1
+
+                            if cnt >= self.prediction_len:
                                 break
+
                 else:
-                    for item in choices:
-                        if item[1].lower().startswith(text):
-                            prediction_list.append(
-                                f"{item[1]} {baza.get_display_values(item[0], radid.index(radio))}")
-                            prediction_ids.append(item[0])
-                            cnt += 1
-                            if cnt == self.prediction_len:
+                    for content in db.db.get_index_values(index):
+                        if content[1].lower().startswith(text) and content[0] != prev_id:
+                            content_id = content[0]
+                            prev_id = content_id
+                            main_content = db.db[content_id]
+
+                            if main_content[index_name].lower().startswith(text):
+                                prediction_list.append(get_displyed(main_content))
+                                prediction_ids.append(content_id)
+                                cnt += 1
+
+                            if main_content['table']:
+                                for element_1 in main_content['table']:
+                                    if element_1[index_name].lower().startswith(text):
+                                        prediction_list.append(get_displyed(element_1))
+                                        prediction_ids.append(content_id)
+                                        cnt += 1
+
+                                    if element_1['table']:
+                                        for element_2 in element_1['table']:
+                                            if element_2[index_name].lower().startswith(text):
+                                                prediction_list.append(get_displyed(element_2))
+                                                prediction_ids.append(content_id)
+                                                cnt += 1
+
+                            if cnt >= self.prediction_len:
                                 break
 
             list_element.update(values=prediction_list)
