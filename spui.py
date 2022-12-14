@@ -1,5 +1,6 @@
 import json
 import PySimpleGUI as sg
+from PySimpleGUI import Element
 import db
 import MSWord
 from copy import deepcopy
@@ -806,7 +807,25 @@ class Pages:
             event, values = self.addtswindow.read()
 
             if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-" or event.startswith('Escape'):
-                print('tsdata ', self.tsdata)  # merge tsdata in view\edit mode
+                try:
+                    if event.startswith('Escape'):
+                        get_focused_elementname = self.addtswindow.find_element_with_focus().Key
+                        container = Element
+
+                        if get_focused_elementname in ['name', 'model', 'part', 'vendor']:
+                            container = self.addtswindow[f'-CONTAINER{get_focused_elementname}-']
+                        else:
+                            pass
+
+                        if container and container.visible:
+                            container.update('')
+                            container.update(visible=False)
+                            self.addtswindow[f'-BOX{get_focused_elementname}-'].update('')
+                            continue
+
+                except AttributeError:
+                    print('NoneType')
+
                 if self.tsavailable == ["Комплект", "Составная часть", "Элемент"] and not master:
                     table1.clear()
                 elif self.tsavailable == ["Составная часть", "Элемент"] and not master:
@@ -1281,9 +1300,10 @@ class Pages:
 
             if text:
                 cnt = 0  # counter
+                index_values = db.db.get_index_values(index)
                 if self.search_type:
-                    for content in db.db.get_index_values(index):
-                        if content[1].lower().__contains__(text) and content[0] != prev_id:
+                    for content in index_values:
+                        if content[1].lower().__contains__(text) and content[0] != prev_id and content[0] != '444':
                             content_id = content[0]
                             prev_id = content_id
                             main_content = db.db[content_id]
@@ -1307,12 +1327,14 @@ class Pages:
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
 
-                            if cnt >= self.prediction_len:
+                            if self.prediction_len == 0:
+                                pass
+                            elif cnt >= self.prediction_len != 0:
                                 break
 
                 else:
-                    for content in db.db.get_index_values(index):
-                        if content[1].lower().startswith(text) and content[0] != prev_id:
+                    for content in index_values:
+                        if content[1].lower().startswith(text) and content[0] != prev_id and content[0] != '444':
                             content_id = content[0]
                             prev_id = content_id
                             main_content = db.db[content_id]
@@ -1336,7 +1358,9 @@ class Pages:
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
 
-                            if cnt >= self.prediction_len:
+                            if self.prediction_len == 0:
+                                pass
+                            elif cnt >= self.prediction_len != 0:
                                 break
 
             list_element.update(values=prediction_list)
