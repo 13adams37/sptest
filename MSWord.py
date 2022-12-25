@@ -201,12 +201,12 @@ class Word:
                 if item['table']:
                     for item1 in item['table']:
                         if item1['serial2']:
-                            serialscounter += int(item1['serial2'])
+                            serialscounter += int(item1['serial2']) * int(item1['amount'])
 
                         if item1['table']:
                             for item2 in item1['table']:
                                 if item2['serial2']:
-                                    serialscounter += int(item2['serial2'])
+                                    serialscounter += int(item2['serial2']) * int(item2['amount'])
 
                 editcell(table, row, 7, serialscounter)
             break
