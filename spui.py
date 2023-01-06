@@ -810,12 +810,11 @@ class Pages:
                 try:
                     if event.startswith('Escape'):
                         get_focused_elementname = self.addtswindow.find_element_with_focus().Key
-                        container = Element
 
                         if get_focused_elementname in ['name', 'model', 'part', 'vendor']:
                             container = self.addtswindow[f'-CONTAINER{get_focused_elementname}-']
                         else:
-                            pass
+                            container = None
 
                         if container and container.visible:
                             container.update('')
@@ -1556,6 +1555,9 @@ class Pages:
                         mswordlib.ims_table(objects, f"СПИСОК ИМС {values['-IN-']}")
                         sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
+
+                        sg.popup_ok(f'СЗЗ 1 = {mswordlib.serial1_count}\n'
+                                    f'СЗЗ 2 = {mswordlib.serial2_count}\n', no_titlebar=True, font=fontbig)
                     except PermissionError:
                         sg.Window('Ошибочка',
                                   [[sg.T('Закройте документ(ы)!', font=fontbig)],

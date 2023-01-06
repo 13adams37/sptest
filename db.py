@@ -1,5 +1,4 @@
 import jsondblite
-import pandas as pd
 
 
 try:
@@ -138,46 +137,47 @@ class DataBase:
 if __name__ == "__main__":
     dbclass = DataBase()
 
-    def get_dict_excelsheet_by_year(year):
-        df = pd.read_excel('База.xlsx', sheet_name=year)
-        dict_list = []
-
-        for row in df.iterrows():
-            main = row[1]
-            if str(main['amount']) == 'nan':  # break line detection
-                continue
-
-            for item in main.to_dict():
-                if str(main[item]) == 'nan':
-                    main[item] = ""
-                else:
-                    main[item] = str(main[item])
-
-            dict_main = main.to_dict()
-            dict_main['object'] = dict_main['object'][:-2]
-            dict_main['amount'] = dict_main['amount'][:-2]
-            if len(dict_main['serial1']) == 1:
-                dict_main['serial1'] = ""
-            if dict_main['serial2'] == '–':
-                dict_main['serial2'] = ""
-            dict_main['uv'] = False
-            dict_main['rgg'] = ""
-            dict_main['rggpp'] = ""
-            dict_main['level'] = "Комплект"
-            dict_main['table'] = []
-            dict_list.append(dict_main)
-        return dict_list
-
-    hints_dict = {
-        '2015': get_dict_excelsheet_by_year('2015'),
-        '2016': get_dict_excelsheet_by_year('2016'),
-        '2017': get_dict_excelsheet_by_year('2017'),
-        '2018': get_dict_excelsheet_by_year('2018'),
-        '2019': get_dict_excelsheet_by_year('2019'),
-        '2020': get_dict_excelsheet_by_year('2020'),
-        '2021': get_dict_excelsheet_by_year('2021'),
-        '2022': get_dict_excelsheet_by_year('2022')
-    }
-    with db:
-        db.add(hints_dict, '444')
+    # pandas
+    # def get_dict_excelsheet_by_year(year):
+    #     df = pd.read_excel('База.xlsx', sheet_name=year)
+    #     dict_list = []
+    #
+    #     for row in df.iterrows():
+    #         main = row[1]
+    #         if str(main['amount']) == 'nan':  # break line detection
+    #             continue
+    #
+    #         for item in main.to_dict():
+    #             if str(main[item]) == 'nan':
+    #                 main[item] = ""
+    #             else:
+    #                 main[item] = str(main[item])
+    #
+    #         dict_main = main.to_dict()
+    #         dict_main['object'] = dict_main['object'][:-2]
+    #         dict_main['amount'] = dict_main['amount'][:-2]
+    #         if len(dict_main['serial1']) == 1:
+    #             dict_main['serial1'] = ""
+    #         if dict_main['serial2'] == '–':
+    #             dict_main['serial2'] = ""
+    #         dict_main['uv'] = False
+    #         dict_main['rgg'] = ""
+    #         dict_main['rggpp'] = ""
+    #         dict_main['level'] = "Комплект"
+    #         dict_main['table'] = []
+    #         dict_list.append(dict_main)
+    #     return dict_list
+    #
+    # hints_dict = {
+    #     '2015': get_dict_excelsheet_by_year('2015'),
+    #     '2016': get_dict_excelsheet_by_year('2016'),
+    #     '2017': get_dict_excelsheet_by_year('2017'),
+    #     '2018': get_dict_excelsheet_by_year('2018'),
+    #     '2019': get_dict_excelsheet_by_year('2019'),
+    #     '2020': get_dict_excelsheet_by_year('2020'),
+    #     '2021': get_dict_excelsheet_by_year('2021'),
+    #     '2022': get_dict_excelsheet_by_year('2022')
+    # }
+    # with db:
+    #     db.add(hints_dict, '444')
 

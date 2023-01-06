@@ -44,7 +44,8 @@ def prep(elmtor):
 
 class Word:
     def __init__(self):
-        pass
+        self.serial1_count = 0
+        self.serial2_count = 0
 
     def act_table(self, elements, output_name):
         doc = docx.Document()
@@ -168,6 +169,8 @@ class Word:
         table = doc.add_table(rows=rows, cols=10)
         table.style = 'Table Grid'
         row = -1
+        self.serial1_count = 0
+        self.serial1_count = 0
 
         while row != rows or row <= rows:
             items = []
@@ -192,8 +195,10 @@ class Word:
                 editcell(table, row, 5, item['amount'])
                 editcell(table, row, 6, empty_serial(item['serial1']))
 
+                self.serial1_count += 1 if item['serial1'] else 0
+
                 if item['serial2']:
-                    serialscounter += int(item['serial2'])
+                    serialscounter += int(item['serial2']) * int(item['amount'])
 
                 editcell(table, row, 8, 'CC')
                 editcell(table, row, 9, '2')
@@ -209,6 +214,7 @@ class Word:
                                     serialscounter += int(item2['serial2']) * int(item2['amount'])
 
                 editcell(table, row, 7, serialscounter)
+                self.serial2_count += serialscounter
             break
         doc.save(f'{output_name}.docx')
 
