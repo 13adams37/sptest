@@ -1,6 +1,6 @@
 import json
+import re
 import PySimpleGUI as sg
-from PySimpleGUI import Element
 import db
 import MSWord
 from copy import deepcopy
@@ -114,8 +114,116 @@ def popup_input_text(main_text='Заглушка'):
             return None
 
 
+def real_popup_input_text_with_hints(headername, middle_text="",
+                                     index_name='objects'):
+    def myFunc(e):
+        return e[1]
+
+    input_width = 80
+    num_items_to_show = 18
+
+    settings_query = baza.get_by_id("1337")
+
+    choices = baza.get_unique_index_names(f"{index_name}")
+    choices.sort(key=myFunc)
+
+    hintedinputlayout = [
+        [
+            sg.Column([
+                [sg.T("         ")],
+                [sg.T(f"{middle_text}", font=fontbig)],
+                [sg.T("         ")],
+                [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                [sg.pin(sg.Col(
+                    [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
+                                 select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
+                    key='-BOX-CONTAINER-', pad=(0, 0)))]
+            ], justification="c", element_justification="c")
+        ],
+        [
+            sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                    enable_events=True, expand_x=True),
+            sg.Button('Выбрать', key="-SELECT-", font=fontbutton),
+        ]
+    ]
+
+    hintedinputwindow = sg.Window(headername, hintedinputlayout, resizable=True, return_keyboard_events=True,
+                                  element_justification="").Finalize()
+    hintedinputwindow.Maximize()
+    if "<Key>" not in hintedinputwindow.TKroot.bind_all():
+        hintedinputwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
+    list_element: sg.Listbox = hintedinputwindow.Element('-BOX-')
+    prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
+
+    while True:
+        event, values = hintedinputwindow.read()
+
+        if event == "-SELECT-" and values["-IN-"]:
+            if baza.search_if_exists("$.object", values['-IN-']):
+                hintedinputwindow.close()
+                return values['-IN-']
+
+        elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
+            hintedinputwindow.close()
+            return None
+
+        elif event.startswith('Escape'):
+            hintedinputwindow['-IN-'].update('')
+
+        elif event.startswith('Down') and len(prediction_list):
+            sel_item = (sel_item + 1) % len(prediction_list)
+            list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+        elif event.startswith('Up') and len(prediction_list):
+            sel_item = (sel_item + (len(prediction_list) - 1)) % len(prediction_list)
+            list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+        elif event == '\r':
+            if len(values['-BOX-']) > 0:
+                hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
+
+            if len(values['-BOX-']) == 1 and len(prediction_list) == 1 and values['-IN-'] == values['-BOX-'][0]:
+                hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
+                hintedinputwindow.close()
+                return values['-IN-']
+
+        elif event == '-IN-':
+            text = values['-IN-'].lower()
+            if text == input_text:
+                continue
+            else:
+                input_text = text
+            prediction_list = []
+            if text:
+                cnt = 0
+                if settings_query['search']:
+                    for item in choices:
+                        if item.lower().__contains__(text):
+                            prediction_list.append(item)
+                            cnt += 1
+                            if cnt == int(settings_query['max_len']):
+                                break
+                else:
+                    for item in choices:
+                        if item.lower().startswith(text):
+                            prediction_list.append(item)
+                            cnt += 1
+                            if cnt == int(settings_query['max_len']):
+                                break
+
+            list_element.update(values=prediction_list)
+            sel_item = 0
+            list_element.update(set_to_index=sel_item)
+
+        elif event == '-BOX-' and values['-BOX-']:
+            hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
+
+    hintedinputwindow.close()
+
+
 def popup_input_text_with_hints(headername, middle_text="Удаление и изменение",
-                                index_name='objects'):
+                                index_name='objects'):  # delete and edit page
     def myFunc(e):
         return e[1]
 
@@ -383,6 +491,7 @@ class Pages:
         self.edittswidow = None
         self.exportwordwindow = None
         self.importwindow = None
+        self.seqwindow = None
 
         self.object = None
         self.tsdata = []
@@ -438,7 +547,7 @@ class Pages:
                             font=fontbig
                             )], ], justification='c')],
             [sg.Column(
-                [[sg.Button('Настройки', key="-Settings-", enable_events=True,
+                [[sg.Button('Дополнительно', key="-Extra-", enable_events=True,
                             expand_x=True,
                             expand_y=True,
                             pad=(30, 30),
@@ -446,7 +555,17 @@ class Pages:
                             button_color=(sg.theme_text_color(), sg.theme_background_color()),
                             border_width=0,
                             font=fontbig
-                            )], ], justification='c')]
+                            ),
+                  sg.Button('Настройки', key="-Settings-", enable_events=True,
+                            expand_x=True,
+                            expand_y=True,
+                            pad=(30, 30),
+                            s=(30, 5),
+                            button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                            border_width=0,
+                            font=fontbig
+                            ),
+                  ], ], justification='c')]
         ]
         self.window = sg.Window('Главное меню', mainpage, resizable=True).Finalize()
 
@@ -564,22 +683,32 @@ class Pages:
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
 
             elif event == '\r' and values["-OBJECT-"]:
-                try:
-                    if self.hints_type:
-                        self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
-                        self.object = values['-BOX-'][0]
-                    else:
-                        self.object = values["-OBJECT-"]
-                    self.credentialswindow['-OBJECT-'].update('')
+                # try:
+                #     if self.hints_type:
+                #         self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                #         self.object = values['-BOX-'][0]
+                #     else:
+                #         self.object = values["-OBJECT-"]
+                #     self.credentialswindow['-OBJECT-'].update('')
+                #
+                #     self.credentialswindow.close()
+                #     return 1
+                # except IndexError:
+                #     self.object = values["-OBJECT-"]
+                #     self.credentialswindow['-OBJECT-'].update('')
+                #
+                #     self.credentialswindow.close()
+                #     return 1
 
+                if len(values['-BOX-']) > 0:
+                    self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+
+                if len(values['-BOX-']) == 1 and len(prediction_list) == 1 and values['-OBJECT-'] == values['-BOX-'][0]:
+                    self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                    self.object = values['-OBJECT-']
                     self.credentialswindow.close()
                     return 1
-                except IndexError:
-                    self.object = values["-OBJECT-"]
-                    self.credentialswindow['-OBJECT-'].update('')
 
-                    self.credentialswindow.close()
-                    return 1
 
             elif event == '-OBJECT-':
                 text = values['-OBJECT-'].lower()
@@ -928,7 +1057,7 @@ class Pages:
                         int_val = (int(values['rggpp'] if values['rggpp'] != '' else 0), 'а как?')
                     except ValueError:
                         sg.popup_no_frame(f'Поле "{int_val[1]}" принимает только числовые значения!.',
-                                          auto_close_duration=1,
+                                          auto_close_duration=2,
                                           auto_close=True, font=fontbig, button_type=5)
                         continue
 
@@ -1017,6 +1146,12 @@ class Pages:
                                     else:
                                         validation_state = False
                                         continue
+
+                    if not (values['serial1'] or values['serial2'] or values['uv']):
+                        validation_state = False
+                        sg.popup_no_frame(f'Одно из полей (СЗЗ-1, СЗЗ-2, УФ) должно быть заполнено!',
+                                          auto_close_duration=3,
+                                          auto_close=True, font=fontbig, button_type=5)
 
                     if not validation_state:
                         continue
@@ -1283,11 +1418,10 @@ class Pages:
                 if val[rad]:
                     return rad
 
-        def get_displyed(response):
+        def get_displyed(response, extra_spaces=""):
             if response is not None:
-                output = [response['object'], response['name'], response['model'], response['part'], response['vendor'],
-                          response['serial1']]
-                return ' '.join(output).split()
+                output = f'{response["object"]} {response["name"]} {response["model"]} {response["part"]} {response["vendor"]} {response["serial1"]}'
+                return f"{extra_spaces}{re.sub(' +', ' ', output)}"
 
         def make_prediction(text, index_name='names'):
             prediction_list.clear()
@@ -1315,14 +1449,14 @@ class Pages:
                             if main_content['table']:
                                 for element_1 in main_content['table']:
                                     if element_1[index_name].lower().__contains__(text):
-                                        prediction_list.append(get_displyed(element_1))
+                                        prediction_list.append(get_displyed(element_1, '  '))
                                         prediction_ids.append(content_id)
                                         cnt += 1
 
                                     if element_1['table']:
                                         for element_2 in element_1['table']:
                                             if element_2[index_name].lower().__contains__(text):
-                                                prediction_list.append(get_displyed(element_2))
+                                                prediction_list.append(get_displyed(element_2, '    '))
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
 
@@ -1346,14 +1480,14 @@ class Pages:
                             if main_content['table']:
                                 for element_1 in main_content['table']:
                                     if element_1[index_name].lower().startswith(text):
-                                        prediction_list.append(get_displyed(element_1))
+                                        prediction_list.append(get_displyed(element_1, '  '))
                                         prediction_ids.append(content_id)
                                         cnt += 1
 
                                     if element_1['table']:
                                         for element_2 in element_1['table']:
                                             if element_2[index_name].lower().startswith(text):
-                                                prediction_list.append(get_displyed(element_2))
+                                                prediction_list.append(get_displyed(element_2, '    '))
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
 
@@ -1363,6 +1497,7 @@ class Pages:
                                 break
 
             list_element.update(values=prediction_list)
+            # print(prediction_list)
             list_element.update(set_to_index=sel_item)
 
         def open_editwindow(it_id):
@@ -1489,8 +1624,12 @@ class Pages:
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
         list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')  # remove underline
         if "<Key>" not in self.exportwordwindow.TKroot.bind_all():
             self.exportwordwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
+        # list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')  # remove underline
 
         prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
@@ -1516,6 +1655,9 @@ class Pages:
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
                     self.exportwordwindow['-IN-'].update(value=values['-BOX-'][0])
+
+            elif event == '-BOX-' and values['-BOX-']:
+                self.exportwordwindow['-IN-'].update(value=values['-BOX-'][0])
 
             elif event == '-IN-':
                 text = values['-IN-'].lower()
@@ -1596,6 +1738,7 @@ class Pages:
             self.importwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.importwindow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')
         prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
 
@@ -1620,6 +1763,9 @@ class Pages:
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
                     self.importwindow['-IN-'].update(value=values['-BOX-'][0])
+
+            elif event == '-BOX-' and values['-BOX-']:
+                self.importwindow['-IN-'].update(value=values['-BOX-'][0])
 
             elif event == '-IN-':
                 text = values['-IN-'].lower()
@@ -1681,13 +1827,13 @@ class Pages:
                     def duplicate_actions(obj_content, name):
                         full_name = "серийный номер" if name == "part" else "СЗЗ"
                         pop_answer = popup_yes_no(
-                            f'Найден дубликат: {full_name}. \n\n'
+                            f'Найден дубликат: {full_name}. \n'
                             f'Наименование - {str(obj_content["name"])}\n'
                             f'Модель - {str(obj_content["model"])}\n'
                             f'SN - {str(obj_content["part"])}\n'
                             f'Производитель - {str(obj_content["vendor"])}\n'
                             f'СЗЗ - {str(obj_content["serial1"])}\n\n'
-                            f'Вы хотите его изменить?')
+                            f'Вы хотите заменить {full_name}?')
                         if pop_answer:
                             # entered_text = popup_input_text(f'Изменение {full_name}')
                             pass_state = True
@@ -1724,45 +1870,64 @@ class Pages:
 
                             if not baza.search_by_id_if_exists(obj_id):
                                 if search_if_item_in_index(obj_body['part'], parts_index) and save_state:
-                                    save_state = duplicate_actions(obj_body, 'part')
+                                    # save_state = duplicate_actions(obj_body, 'part')
+                                    duplicate_actions(obj_body, 'part')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['part'], parts_index) and save_state:
-                                            save_state = duplicate_actions(item, 'part')
+                                            # save_state = duplicate_actions(item, 'part')
+                                            duplicate_actions(item, 'part')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['part'], parts_index) and save_state:
-                                                    save_state = duplicate_actions(item1, 'part')
+                                                    # save_state = duplicate_actions(item1, 'part')
+                                                    duplicate_actions(item1, 'part')
 
                                 if search_if_item_in_index(obj_body['serial1'], serials_index) and save_state:
-                                    save_state = duplicate_actions(obj_body, 'serial1')
+                                    # save_state = duplicate_actions(obj_body, 'serial1')
+                                    duplicate_actions(obj_body, 'serial1')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['serial1'], serials_index) and save_state:
-                                            save_state = duplicate_actions(item, 'serial1')
+                                            # save_state = duplicate_actions(item, 'serial1')
+                                            duplicate_actions(item, 'serial1')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['serial1'],
                                                                            serials_index) and save_state:
-                                                    save_state = duplicate_actions(item1, 'serial1')
+                                                    # save_state = duplicate_actions(item1, 'serial1')
+                                                    duplicate_actions(item1, 'serial1')
 
-                                if save_state:
-                                    if values["-IN-"]:
-                                        baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
-                                    else:
-                                        baza.add_dict(obj_body, obj_id)
-                                    sg.popup_no_frame(
-                                        f'"{str(obj_body["name"])}"'
-                                        f'{str(obj_body["model"])}\n'
-                                        f'{str(obj_body["part"])}'
-                                        f'{str(obj_body["vendor"])}'
-                                        f'\nимпортирован.',
-                                        auto_close_duration=1,
-                                        auto_close=True, font=fontbig, button_type=5)
+                                # if save_state:
+                                #     if values["-IN-"]:
+                                #         baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
+                                #     else:
+                                #         baza.add_dict(obj_body, obj_id)
+                                #     sg.popup_no_frame(
+                                #         f'"{str(obj_body["name"])}"\n'
+                                #         f'{str(obj_body["model"])}\n'
+                                #         f'{str(obj_body["part"])}\n'
+                                #         f'{str(obj_body["vendor"])}\n'
+                                #         f'\nимпортирован.',
+                                #         auto_close_duration=1,
+                                #         auto_close=True, font=fontbig, button_type=5)
+
+                                if values["-IN-"]:
+                                    baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
+                                else:
+                                    baza.add_dict(obj_body, obj_id)
+                                sg.popup_no_frame(
+                                    f'"{str(obj_body["name"])}"\n'
+                                    f'{str(obj_body["model"])}\n'
+                                    f'{str(obj_body["part"])}\n'
+                                    f'{str(obj_body["vendor"])}\n'
+                                    f'\nимпортирован.',
+                                    auto_close_duration=1,
+                                    auto_close=True, font=fontbig, button_type=5)
 
                             else:
                                 sg.popup_no_frame(
@@ -1772,7 +1937,7 @@ class Pages:
                                     f'Производитель - {str(obj_body["vendor"])}\n'
                                     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
                                     f'\nуже существует.',
-                                    auto_close_duration=1,
+                                    auto_close_duration=3,
                                     auto_close=True, font=fontbig, button_type=5)
 
                                 # С подтверждением
@@ -1786,6 +1951,142 @@ class Pages:
                                 # pass
 
         self.importwindow.close()
+
+    def set_items_sequence_page(self, headername, object_name):
+        # object_name = real_popup_input_text_with_hints('Выбор объекта', "Введите название объекта")
+
+        # if object_name is None:
+
+        # print(object_name)
+
+        input_width = 80
+        num_items_to_show = 18
+
+        def get_displyed(vals):
+            if vals is not None:
+                output = [vals['object'], vals['name'], vals['model'], vals['part'], vals['vendor'],
+                          vals['serial1']]
+                return ' '.join(output).split()
+
+        test_vals = []
+        test_ids = []
+
+        def get_numerated_items(obj_name):
+            test_vals.clear()
+            test_ids.clear()
+            index_values_dirty = db.db.get_index_values('objects')
+            prev_id = ''
+            index_values = list(filter(lambda x: x[1] == obj_name, index_values_dirty))
+
+            for count, content in enumerate(index_values):
+                if content[0] != prev_id and content[0] != '444':
+                    content_id = content[0]
+                    prev_id = content_id
+                    main_content = db.db[content_id]
+
+                    if main_content['object'].startswith(obj_name):
+                        test_vals.append([count, f'{" ".join(get_displyed(main_content))}'])  # bad
+                        test_ids.append(content_id)
+
+            self.seqwindow['-BOX-'].update(values=test_vals)
+
+        def re_renumerate_items(items_ids):  # gets ids, returns updated test_vals and test_ids, and updates -BOX-
+            test_vals.clear()
+            test_ids.clear()
+
+            for count, item in enumerate(items_ids):
+                main_content = db.db[item]
+                test_vals.append([count, f'{" ".join(get_displyed(main_content))}'])
+                test_ids.append(item)
+
+            self.seqwindow['-BOX-'].update(values=test_vals)
+
+        def get_selected_items_pos(vals):  # gets values, returns listed positions
+            positions = []
+
+            for item in vals:
+                positions.append(item[0])
+
+            return positions
+
+        def put_selected_items(positions,
+                               start_inserting_at,
+                               original_list):  # gets list of ids and start position, returns new ids list
+            elements_to_move = [original_list[i] for i in positions]
+
+            for i in sorted(positions, reverse=True):
+                del original_list[i]
+
+            original_list[start_inserting_at:start_inserting_at] = elements_to_move
+
+            return original_list
+
+        def alphabetical_sort(items_ids):  # gets item_ids, returns sorted list of id and content by name
+            pass
+
+        seqlayout = [
+            [
+                sg.Column([
+                    [sg.T("         ")],
+                    [sg.T("Изменение последовательности", font=fontbig)],
+                    [sg.T("         ")],
+                    [sg.pin(sg.Col(
+                        [[sg.Listbox(values=test_vals, size=(input_width, num_items_to_show), enable_events=True,
+                                     key='-BOX-',
+                                     select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED, no_scrollbar=False, font=fontbig,
+                                     horizontal_scroll=True)]],
+                        key='-BOX-CONTAINER-', pad=(0, 0)))]
+                ], justification="c", element_justification="c")
+            ],
+            [
+                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                        enable_events=True, expand_x=True),
+                sg.Button("Сохранить", key="-SAVE-", font=fontbutton),
+            ]
+        ]
+
+        self.seqwindow = sg.Window(headername, seqlayout, resizable=True, return_keyboard_events=True,
+                                   element_justification="").Finalize()
+        self.seqwindow.Maximize()
+        if "<Key>" not in self.seqwindow.TKroot.bind_all():
+            self.seqwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
+        list_element: sg.Listbox = self.seqwindow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')  # remove underline
+
+        get_numerated_items(object_name)
+
+        while True:
+            event, values = self.seqwindow.read()
+
+            if event == sg.WIN_CLOSED or event == "-CLOSE-" or event.startswith('Escape'):
+                self.seqwindow.close()
+                break
+
+            elif event == '\r':
+                starting_position = None
+                while True:
+                    try:
+                        starting_position = int(popup_input_text('Введите позицию начала вставки'))
+                        break
+                    except ValueError:
+                        pass
+                    except TypeError:
+                        break
+
+                if starting_position is not None:
+                    new_ids_list = put_selected_items(get_selected_items_pos(values['-BOX-']),
+                                                      starting_position,
+                                                      test_ids).copy()
+                    re_renumerate_items(new_ids_list)
+
+            elif event == '-SAVE-':
+                # получаю список id, формирование как при экспорте и импорте
+                print(test_ids)
+                for item in test_ids:
+                    content = db.db[item]
+                    baza.delete_by_id(item)
+                    baza.add_dict(content, item)
 
 
 class SpUi:
@@ -1822,6 +2123,18 @@ class SpUi:
             elif event == "-Import-":
                 pages.window.Hide()
                 pages.import_page("Импорт и экспорт")
+
+                pages.window.UnHide()
+
+            elif event == "-Extra-":
+                pages.window.Hide()
+                while True:
+                    object_name = real_popup_input_text_with_hints('Выбор объекта', "Введите название объекта")
+                    if object_name is None:
+                        break
+                    else:
+                        pages.set_items_sequence_page("Изменение последовательности", object_name)
+                        break
 
                 pages.window.UnHide()
 
