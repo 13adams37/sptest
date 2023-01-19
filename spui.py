@@ -1054,18 +1054,6 @@ class Pages:
                             self.validate_input(values['rggpp'], 2, 'РГГ ПП')) is not True:
                         validation_state = False
 
-                    # int_val = (123, 'СЗЗ 1')
-                    # try:
-                    #     int_val = (int(values['serial1'] if values['serial1'] != '' else 0), 'СЗЗ 2')
-                    #     int_val = (int(values['serial2'] if values['serial2'] != '' else 0), 'Кол-во')
-                    #     int_val = (int(values['amount'] if values['amount'] != '' else 0), 'ГР ПП')
-                    #     int_val = (int(values['rggpp'] if values['rggpp'] != '' else 0), 'а как?')
-                    # except ValueError:
-                    #     sg.popup_no_frame(f'Поле "{int_val[1]}" принимает только числовые значения!.',
-                    #                       auto_close_duration=2,
-                    #                       auto_close=True, font=fontbig, button_type=5)
-                    #     continue
-
                     if table1 and not ts_id[1]:  # insides check
                         table_partdata = []
                         table_serialdata = []
@@ -1119,22 +1107,6 @@ class Pages:
                         table_partdata.clear()
                         table_serialdata.clear()
 
-                    if values['part'] and values['part'] != 'б/н':
-                        names = baza.get_index_names('parts')
-
-                        for item in names:
-                            if values['part'] == item[1]:
-                                if ts_id[0] == item[0]:  # edit check
-                                    pass
-                                else:
-                                    answer = popup_yes_no(
-                                        f'Серийный номер "{values["part"]}"\nуже существует в базе!\n'
-                                        f'Вы действительно хотите его использовать?')
-                                    if answer:
-                                        pass
-                                    else:
-                                        validation_state = False
-                                        continue
                     if values['serial1']:
                         serials = baza.get_index_names('serials')
 
@@ -1143,20 +1115,58 @@ class Pages:
                                 if ts_id[0] == item[0]:  # edit check
                                     continue
                                 else:
-                                    answer = popup_yes_no(
-                                        f"СЗЗ {values['serial1']}\nуже существует в базе!\n"
-                                        f"Вы действительно хотите его использовать?")
-                                    if answer:
-                                        pass
-                                    else:
-                                        validation_state = False
-                                        continue
+                                    sg.popup_no_frame(f'Найден дубликат СЗЗ-1 'f"{values['serial1']}"''
+                                                      '\n Его использование невозможно!',
+                                                      auto_close_duration=5,
+                                                      auto_close=True, font=fontbig)
+                                    validation_state = False
+                                    continue
 
                     if not (values['serial1'] or values['serial2'] or values['uv']):
                         validation_state = False
                         sg.popup_no_frame(f'Одно из полей (СЗЗ-1, СЗЗ-2, УФ) должно быть заполнено!',
                                           auto_close_duration=3,
                                           auto_close=True, font=fontbig, button_type=5)
+
+                    if values['part'] and values['part'] != 'б/н':
+                        names = baza.get_index_names('parts')
+
+                        for item in names:
+                            if values['part'] == item[1]:
+                                if ts_id[0] == item[0]:  # edit check
+                                    pass
+                                else:
+                                    if item[0] != '444':
+                                        main_content = db.db[item[0]]
+                                        if master == True or (master == 'editor' and ts_id[1] == 0) and \
+                                                values['part'] == main_content['part']:
+                                            answer = popup_input_text(f'Серийный номер "{values["part"]}" существует в базе!\n'
+                                                                      f'{main_content["name"]}\n'
+                                                                      f'{main_content["model"]}\n'
+                                                                      f'{main_content["part"]}\n'
+                                                                      f'{main_content["vendor"]}\n\n'
+                                                                      'Введите 1 для добавления ТС как нового.\n'
+                                                                      f"{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
+                                                                      'Закройте окно для отмены действия.')
+                                            if answer == '1':
+                                                # add new record
+                                                break
+                                            elif answer == '2':
+                                                if validation_state:
+                                                    baza.delete_by_id(item[0])
+                                            else:
+                                                validation_state = False
+                                                break
+                                    else:
+                                        answer = popup_yes_no(
+                                            f'Серийный номер "{values["part"]}"\nсуществует в базе (или в базе за прошлые года)\n'
+                                            f'Вы хотите его использовать?')
+
+                                        if answer:
+                                            break
+                                        else:
+                                            validation_state = False
+                                            break
 
                     if not validation_state:
                         continue
@@ -1277,48 +1287,33 @@ class Pages:
                     self.addtswindow.close()
 
     def validate_input(self, user_input, option, field_name):
-        print('\n')
-        print(user_input, field_name)
         if len(user_input) == 0:
-            print('len is 0')
             return True
 
         if option == 1:
             try:
                 int(user_input)
-                print('this is int')
                 return True
 
             except ValueError:
-                # print("Invalid input. Please enter an integer value.")
                 sg.popup_no_frame(f'Поле "{field_name}" принимает только числовые значения!',
                                   auto_close_duration=2,
                                   auto_close=True, font=fontbig, button_type=5)
                 return False
+
         elif option == 2:
-            # pattern = re.compile(r'^\d+(?:[-,]\d+)*$')
-            # pattern = re.compile(r'^(\d+(?:[-, ]\d+)*)$')
             pattern = re.compile(r'^(\d+(?:(?:[-,]|, )\d+)*)$')
 
             if pattern.match(user_input):
-                # input is valid, convert to integer
-                # user_input = user_input.replace(',', '')  # remove any commas
-                # user_input = user_input.replace('-', ' ')  # replace dashes with spaces
-                # user_input = [int(x) for x in user_input.split()]  # convert to list of integers
-                print('matches regexp')
                 return True
             else:
-                # input is not valid
-                # print(
-                #     "Invalid input. Please enter an integer value or a range of integers in the format of '1-2' or '1, 2'.")
-                sg.popup_no_frame(f'Поле "{field_name}" принимает только числовые значения или значения формата "1-2", "1, 2"!',
-                                  auto_close_duration=2,
-                                  auto_close=True, font=fontbig, button_type=5)
+                sg.popup_no_frame(
+                    f'Поле "{field_name}" принимает только числовые значения или значения формата "1-2", "1, 2"!',
+                    auto_close_duration=2,
+                    auto_close=True, font=fontbig, button_type=5)
                 return False
         else:
-            print("Invalid option. Please enter either 1 or 2.")
             return None
-
 
     def fun_slave(self):
         allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',

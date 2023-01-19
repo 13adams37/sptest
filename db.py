@@ -44,10 +44,19 @@ class DataBase:
         else:
             return False
 
+    def get_index_names_fromthisdb(self, index):
+        items = []
+        with db:
+            for item in db.get_index_values(index):
+                if item[0] != '444' and item[1]:
+                    items.append(item)
+        return items
+
     def get_index_names(self, index):
         items = []
         with db:
             for item in db.get_index_values(index):
+                # if item[0] != '444' and item[1]:
                 items.append(item)
         return items
 
@@ -55,6 +64,7 @@ class DataBase:
         items = []
         ids = []
         for item in db.get_index_values(index):
+            # if item[0] != '444' and item[1]:
             items.append(item[1])
             ids.append(item[0])
         return items, ids
@@ -62,6 +72,7 @@ class DataBase:
     def get_unique_index_names(self, index):
         items = []
         for item in db.get_index_values(index):
+            # if item[0] != '444' and item[1]:
             items.append(item[1])
         return list(set(items))
 
