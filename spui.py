@@ -709,7 +709,6 @@ class Pages:
                     self.credentialswindow.close()
                     return 1
 
-
             elif event == '-OBJECT-':
                 text = values['-OBJECT-'].lower()
                 if text == input_text:
@@ -1049,17 +1048,23 @@ class Pages:
                     # user input validation
 
                     # int validation
-                    int_val = (123, 'СЗЗ 1')
-                    try:
-                        int_val = (int(values['serial1'] if values['serial1'] != '' else 0), 'СЗЗ 2')
-                        int_val = (int(values['serial2'] if values['serial2'] != '' else 0), 'Кол-во')
-                        int_val = (int(values['amount'] if values['amount'] != '' else 0), 'ГР ПП')
-                        int_val = (int(values['rggpp'] if values['rggpp'] != '' else 0), 'а как?')
-                    except ValueError:
-                        sg.popup_no_frame(f'Поле "{int_val[1]}" принимает только числовые значения!.',
-                                          auto_close_duration=2,
-                                          auto_close=True, font=fontbig, button_type=5)
-                        continue
+                    if (self.validate_input(values['serial1'], 1, 'СЗЗ-1') and
+                            self.validate_input(values['serial2'], 1, 'СЗЗ-2') and
+                            self.validate_input(values['amount'], 1, 'Количество') and
+                            self.validate_input(values['rggpp'], 2, 'РГГ ПП')) is not True:
+                        validation_state = False
+
+                    # int_val = (123, 'СЗЗ 1')
+                    # try:
+                    #     int_val = (int(values['serial1'] if values['serial1'] != '' else 0), 'СЗЗ 2')
+                    #     int_val = (int(values['serial2'] if values['serial2'] != '' else 0), 'Кол-во')
+                    #     int_val = (int(values['amount'] if values['amount'] != '' else 0), 'ГР ПП')
+                    #     int_val = (int(values['rggpp'] if values['rggpp'] != '' else 0), 'а как?')
+                    # except ValueError:
+                    #     sg.popup_no_frame(f'Поле "{int_val[1]}" принимает только числовые значения!.',
+                    #                       auto_close_duration=2,
+                    #                       auto_close=True, font=fontbig, button_type=5)
+                    #     continue
 
                     if table1 and not ts_id[1]:  # insides check
                         table_partdata = []
@@ -1271,6 +1276,50 @@ class Pages:
                     baza.delete_by_id(ts_id[0])
                     self.addtswindow.close()
 
+    def validate_input(self, user_input, option, field_name):
+        print('\n')
+        print(user_input, field_name)
+        if len(user_input) == 0:
+            print('len is 0')
+            return True
+
+        if option == 1:
+            try:
+                int(user_input)
+                print('this is int')
+                return True
+
+            except ValueError:
+                # print("Invalid input. Please enter an integer value.")
+                sg.popup_no_frame(f'Поле "{field_name}" принимает только числовые значения!',
+                                  auto_close_duration=2,
+                                  auto_close=True, font=fontbig, button_type=5)
+                return False
+        elif option == 2:
+            # pattern = re.compile(r'^\d+(?:[-,]\d+)*$')
+            # pattern = re.compile(r'^(\d+(?:[-, ]\d+)*)$')
+            pattern = re.compile(r'^(\d+(?:(?:[-,]|, )\d+)*)$')
+
+            if pattern.match(user_input):
+                # input is valid, convert to integer
+                # user_input = user_input.replace(',', '')  # remove any commas
+                # user_input = user_input.replace('-', ' ')  # replace dashes with spaces
+                # user_input = [int(x) for x in user_input.split()]  # convert to list of integers
+                print('matches regexp')
+                return True
+            else:
+                # input is not valid
+                # print(
+                #     "Invalid input. Please enter an integer value or a range of integers in the format of '1-2' or '1, 2'.")
+                sg.popup_no_frame(f'Поле "{field_name}" принимает только числовые значения или значения формата "1-2", "1, 2"!',
+                                  auto_close_duration=2,
+                                  auto_close=True, font=fontbig, button_type=5)
+                return False
+        else:
+            print("Invalid option. Please enter either 1 or 2.")
+            return None
+
+
     def fun_slave(self):
         allnames = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
                     'rgg', 'rggpp', 'level', '-TABLE-']
@@ -1409,7 +1458,7 @@ class Pages:
             self.edittswidow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
-        list_element.TKListbox.configure(activestyle='none')  # remove underline
+        list_element.TKListbox.configure(activestyle='none')
         prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item = [], [], "", "", "", 0
         radid = ("objects", "names", "models", "parts", "vendors", "serials")
 
@@ -1497,7 +1546,6 @@ class Pages:
                                 break
 
             list_element.update(values=prediction_list)
-            # print(prediction_list)
             list_element.update(set_to_index=sel_item)
 
         def open_editwindow(it_id):
@@ -1624,12 +1672,9 @@ class Pages:
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
         list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
-        list_element.TKListbox.configure(activestyle='none')  # remove underline
+        list_element.TKListbox.configure(activestyle='none')
         if "<Key>" not in self.exportwordwindow.TKroot.bind_all():
             self.exportwordwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
-
-        # list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
-        list_element.TKListbox.configure(activestyle='none')  # remove underline
 
         prediction_list, input_text, sel_item = [], "", 0
         choices = baza.get_unique_index_names('objects')
@@ -1701,7 +1746,7 @@ class Pages:
                         sg.popup_ok(f'СЗЗ 1 = {mswordlib.serial1_count}\n'
                                     f'СЗЗ 2 = {mswordlib.serial2_count}\n', no_titlebar=True, font=fontbig)
                     except PermissionError:
-                        sg.Window('Ошибочка',
+                        sg.Window('Ошибка',
                                   [[sg.T('Закройте документ(ы)!', font=fontbig)],
                                    [sg.Button('Понял', font=fontbutton)]],
                                   element_justification="c", no_titlebar=True, size=(600, 100), auto_close=True,
@@ -1953,12 +1998,6 @@ class Pages:
         self.importwindow.close()
 
     def set_items_sequence_page(self, headername, object_name):
-        # object_name = real_popup_input_text_with_hints('Выбор объекта', "Введите название объекта")
-
-        # if object_name is None:
-
-        # print(object_name)
-
         input_width = 80
         num_items_to_show = 18
 
@@ -2052,7 +2091,7 @@ class Pages:
             self.seqwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.seqwindow.Element('-BOX-')
-        list_element.TKListbox.configure(activestyle='none')  # remove underline
+        list_element.TKListbox.configure(activestyle='none')
 
         get_numerated_items(object_name)
 
@@ -2081,8 +2120,6 @@ class Pages:
                     re_renumerate_items(new_ids_list)
 
             elif event == '-SAVE-':
-                # получаю список id, формирование как при экспорте и импорте
-                print(test_ids)
                 for item in test_ids:
                     content = db.db[item]
                     baza.delete_by_id(item)
