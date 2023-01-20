@@ -954,7 +954,7 @@ class Pages:
                             continue
 
                 except AttributeError:
-                    print('NoneType')
+                    print('AttributeError')
 
                 if self.tsavailable == ["Комплект", "Составная часть", "Элемент"] and not master:
                     table1.clear()
@@ -1178,6 +1178,7 @@ class Pages:
                         self.tsdata = self.get_tsvalues(values)
                         sg.popup_no_frame(f'"{values["name"]}" изменён.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
+                        self.addtswindow.close()
 
                     elif master == 'editor' and ts_id != (None, None) and ts_id[1] == 0:
                         baza.update_element(ts_id[0], self.get_tsvalues(values))
