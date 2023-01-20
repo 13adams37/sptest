@@ -880,6 +880,7 @@ class Pages:
             self.fun_vieweditor()
             if ts_id != (None, None):
                 if ts_id[1] == 0:
+                    self.addtswindow['-CloseAddTsPage-'].Update('Выход')
                     self.addtswindow['_SAVE_'].Update('Сохранить в БД')
                     self.addtswindow["bd_delete"].Update(visible=True)
             if self.tsavailable == ["Комплект", "Составная часть", "Элемент"]:
@@ -894,6 +895,7 @@ class Pages:
 
         if master == True:
             self.addtswindow['_SAVE_'].Update('Добавить в БД')
+            self.addtswindow['-CloseAddTsPage-'].Update('Выход')
 
         def make_predictions(index, container):
             choices = eval(f"self.choices_{index}")
