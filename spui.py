@@ -276,6 +276,7 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
 
                     choices = baza.get_unique_index_names(f"{index_name}")
                     choices.sort(key=myFunc)
+                    prediction_list.clear()
                     cnt = 0
                     text = values['-IN-'].lower()
                     if settings_query['search']:
@@ -314,8 +315,10 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
 
                     choices = baza.get_unique_index_names(f"{index_name}")
                     choices.sort(key=myFunc)
+                    prediction_list.clear()
                     cnt = 0
-                    text = values['-IN-'].lower()
+                    text = popup_text
+                    hintedinputwindow['-IN-'].update(popup_text)
                     if settings_query['search']:
                         for item in choices:
                             if item.lower().__contains__(text):
@@ -1845,6 +1848,8 @@ class Pages:
                             json.dump(objects, f)
                             sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
                                               auto_close=True, font=fontbig, button_type=5)
+                            self.importwindow.close()
+                            break
 
             elif event == '-IMPORT-':
                 file_path = sg.popup_get_file("file search", file_types=(("JSON", "*.json "),), no_window=True)
