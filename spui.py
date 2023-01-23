@@ -1,6 +1,8 @@
 import json
 import re
 import PySimpleGUI as sg
+import pyperclip
+
 import db
 import MSWord
 from copy import deepcopy
@@ -182,11 +184,14 @@ def real_popup_input_text_with_hints(headername, middle_text="",
         elif event == '\r':
             if len(values['-BOX-']) > 0:
                 hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
-
-            if len(values['-BOX-']) == 1 and len(prediction_list) == 1 and values['-IN-'] == values['-BOX-'][0]:
-                hintedinputwindow['-IN-'].update(value=values['-BOX-'][0])
-                hintedinputwindow.close()
-                return values['-IN-']
+            try:
+                if values['-BOX-'][0] == values['-IN-']:
+                    hintedinputwindow.close()
+                    return values['-IN-']
+            except IndexError:
+                continue
+                # hintedinputwindow.close()
+                # return values['-IN-']
 
         elif event == '-IN-':
             text = values['-IN-'].lower()
@@ -655,10 +660,12 @@ class Pages:
                                            return_keyboard_events=True, element_justification="c")
         self.credentialswindow.Finalize()
         self.credentialswindow['-OBJECT-'].SetFocus(True)
+
         if "<Key>" not in self.credentialswindow.TKroot.bind_all():
             self.credentialswindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         list_element: sg.Listbox = self.credentialswindow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')
         prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
 
         while True:
@@ -686,29 +693,18 @@ class Pages:
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
 
             elif event == '\r' and values["-OBJECT-"]:
-                # try:
-                #     if self.hints_type:
-                #         self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
-                #         self.object = values['-BOX-'][0]
-                #     else:
-                #         self.object = values["-OBJECT-"]
-                #     self.credentialswindow['-OBJECT-'].update('')
-                #
-                #     self.credentialswindow.close()
-                #     return 1
-                # except IndexError:
-                #     self.object = values["-OBJECT-"]
-                #     self.credentialswindow['-OBJECT-'].update('')
-                #
-                #     self.credentialswindow.close()
-                #     return 1
-
                 if len(values['-BOX-']) > 0:
                     self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
 
-                if len(values['-BOX-']) == 1 and len(prediction_list) == 1 and values['-OBJECT-'] == values['-BOX-'][0]:
-                    self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
-                    self.object = values['-OBJECT-']
+                try:
+                    if values['-BOX-'][0] == values['-OBJECT-']:
+                        self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                        self.object = values['-OBJECT-']
+                        self.credentialswindow.close()
+                        return 1
+                except IndexError:
+                    self.object = values["-OBJECT-"]
+                    self.credentialswindow['-OBJECT-'].update('')
                     self.credentialswindow.close()
                     return 1
 
@@ -831,6 +827,8 @@ class Pages:
                 key='-TABLE-'), ],
             [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="l", expand_x=True,
                      font=fontbutton),
+             sg.Button("Копировать", k="-COPY-", font=fontbutton),
+             sg.Button("Вставить", k="-PASTE-", font=fontbutton),
              sg.Button("Удалить из БД", k="bd_delete", font=fontbutton, visible=False),
              sg.Button("Сохранить", k="_SAVE_", font=fontbutton),
              sg.Button("Очистить", font=fontbutton),
@@ -976,6 +974,113 @@ class Pages:
                 sel_item = (sel_item + (len(self.predictions_list) - 1)) % len(self.predictions_list)
                 list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
 
+            elif event == '-COPY-':
+                pyperclip.copy(json.dumps(
+                    {'sp': baza.makejson(self.get_tsvalues(values))}
+                ))
+
+            elif event == '-PASTE-':
+                def cut_dict_by_depth(d, max_depth):
+                    if popup_yes_no(f'Содержимое для вставки не помещается полностью.\n'
+                                    f'Вставить удалив непомещающиеся элементы?'):
+                        current_depth = 1
+                        if current_depth == max_depth:
+                            d['table'] = []
+                        else:
+                            if d['table']:
+                                for cnt, it3m in enumerate(d['table']):
+                                    current_depth = 2
+                                    if current_depth == max_depth:
+                                        it3m['table'] = []
+                        return True
+                    else:
+                        return False
+
+                def get_max_depth(data):
+                    max_depth = 0
+                    if isinstance(data, dict):
+                        max_depth = 1
+                        if data['table']:
+                            max_depth = 2 if max_depth <= 1 else max_depth  # first table is 2 depth
+                            for data1 in data['table']:
+                                if data1['table']:
+                                    max_depth = 3 if max_depth <= 2 else max_depth
+                    return max_depth
+
+                def rename_element(temp_content):
+                    if temp_content['table']:
+                        for item in temp_content['table']:
+                            item['object'] = object_name
+                            if current_level == 'Комплект':
+                                item['level'] = 'Составная часть'
+                            elif current_level == 'Составная часть':
+                                item['level'] = 'Элемент'
+                            else:
+                                print('RENAME EXEPTION')
+
+                            if item['table']:
+                                for item1 in item['table']:
+                                    item1['object'] = object_name
+                                    item1['level'] = 'Элемент'
+
+                def get_current_max_depth():
+                    if current_level == 'Комплект':
+                        return 3
+                    elif current_level == 'Составная часть':
+                        return 2
+                    elif current_level == 'Элемент':
+                        return 1
+                    else:
+                        print('MAX DEPTH IS NOT DEFINED')
+
+                def add_content_to_table():
+                    temp_content = deepcopy(pasted_content)
+                    temp_table = self.dict_2_list(temp_content)[12]
+                    if current_max_depth == 3:
+                        for item in temp_table:
+                            table1.append(item)
+                    elif current_max_depth == 2:
+                        # table ?
+                        for item in temp_table:
+                            table2.append(item)
+                    else:
+                        print('ADD TO TABLE FAILURE')
+
+                pasted_content = {}
+                try:
+                    pasted_content = json.loads(pyperclip.paste())['sp']
+                except (TypeError, ValueError):
+                    print('bad clipboard (not in format)')
+                    sg.popup_no_frame(f'Ошибка вставки!'
+                                      f'\nВставленный элемент не относится к программе.',
+                                      auto_close_duration=1, auto_close=True, font=fontbig)
+                    continue
+                # except ValueError:
+                #     print('not dict')
+                #     sg.popup_no_frame(f'Ошибка вставки!', auto_close_duration=1, auto_close=True, font=fontbig)
+                #     continue
+
+                current_level, object_name = values['level'], values['object']
+                pasted_content['object'] = object_name
+                pasted_content['level'] = current_level
+
+                content_max_depth = get_max_depth(pasted_content)
+                current_max_depth = get_current_max_depth()
+
+                if content_max_depth > current_max_depth:
+                    if not cut_dict_by_depth(pasted_content, current_max_depth):
+                        continue
+
+                # raname
+                rename_element(pasted_content)
+
+                self.resize_and_update_table(self.dict_2_list(deepcopy(pasted_content))[12])
+                add_content_to_table()
+                pasted_content.pop('table')
+
+                for name, val in pasted_content.items():
+                    self.addtswindow[name].update(val)
+
             elif event == '\r':
                 if self.last_event:
                     if len(values[f'-BOX{self.last_event}-']) > 0:
@@ -1054,9 +1159,9 @@ class Pages:
 
                     # int validation
                     if (self.validate_input(values['serial1'], 1, 'СЗЗ-1') and
-                            self.validate_input(values['serial2'], 1, 'СЗЗ-2') and
-                            self.validate_input(values['amount'], 1, 'Количество') and
-                            self.validate_input(values['rggpp'], 2, 'РГГ ПП')) is not True:
+                        self.validate_input(values['serial2'], 1, 'СЗЗ-2') and
+                        self.validate_input(values['amount'], 1, 'Количество') and
+                        self.validate_input(values['rggpp'], 2, 'РГГ ПП')) is not True:
                         validation_state = False
 
                     if table1 and not ts_id[1]:  # insides check
@@ -1145,14 +1250,15 @@ class Pages:
                                         main_content = db.db[item[0]]
                                         if master == True or (master == 'editor' and ts_id[1] == 0) and \
                                                 values['part'] == main_content['part']:
-                                            answer = popup_input_text(f'Серийный номер "{values["part"]}" существует в базе!\n'
-                                                                      f'{main_content["name"]}\n'
-                                                                      f'{main_content["model"]}\n'
-                                                                      f'{main_content["part"]}\n'
-                                                                      f'{main_content["vendor"]}\n\n'
-                                                                      'Введите 1 для добавления ТС как нового.\n'
-                                                                      f"{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
-                                                                      'Закройте окно для отмены действия.')
+                                            answer = popup_input_text(
+                                                f'Серийный номер "{values["part"]}" существует в базе!\n'
+                                                f'{main_content["name"]}\n'
+                                                f'{main_content["model"]}\n'
+                                                f'{main_content["part"]}\n'
+                                                f'{main_content["vendor"]}\n\n'
+                                                'Введите 1 для добавления ТС как нового.\n'
+                                                f"{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
+                                                'Закройте окно для отмены действия.')
                                             if answer == '1':
                                                 # add new record
                                                 break
@@ -1270,7 +1376,8 @@ class Pages:
 
                 if values['level'] == "Комплект":
                     slave.tsavailable = ["Составная часть", "Элемент"]
-                    table2 = table1[pos][12].copy()
+                    print(table1)
+                    table2 = deepcopy(table1[pos][12])
                 else:
                     slave.tsavailable = ["Элемент"]
 
@@ -1403,11 +1510,14 @@ class Pages:
                 if z["table"]:
                     for v in z["table"]:
                         temp2.append(list(v.values()))
+                        # temp2.append(v)
                 z["table"] = temp2.copy()
                 temp2.clear()
                 temp.append(list(z.values()))
+                # temp.append(z)
         dict_obj["table"] = temp
         return list(dict_obj.values())
+        # return dict_obj
 
     def trim_table(self, dict_obj):
         temp = dict_obj.copy()
