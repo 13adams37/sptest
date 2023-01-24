@@ -395,56 +395,56 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     hintedinputwindow.close()
 
 
-def super_predictor(index_type, index_name, text):  # later
-    #  index_type - uniquenames, uniqueidnames, names
-    def myFunc(e):
-        return e[1]
-
-    settings_query = baza.get_by_id("1337")
-
-    if index_type == "unique_names":
-        choices = baza.get_unique_index_names(f"{index_name}")
-    elif index_type == "unique_idnames":
-        choices = baza.get_unique_index_idnames(f"{index_name}")
-    else:
-        choices = baza.get_index_names(f"{index_name}")
-
-    choices.sort(key=myFunc)
-
-    prediction_list = []
-    cnt = 0
-    if index_type == "unique_names" or "names":  # only names
-        if settings_query['search']:
-            for item in choices:
-                if item.lower().__contains__(text):
-                    prediction_list.append(item)
-                    cnt += 1
-                    if cnt == int(settings_query['max_len']):
-                        break
-        else:
-            for item in choices:
-                if item.lower().startswith(text):
-                    prediction_list.append(item)
-                    cnt += 1
-                    if cnt == int(settings_query['max_len']):
-                        break
-        return prediction_list
-    else:  # id, names
-        if settings_query['search']:
-            for item in choices:
-                if item.lower().__contains__(text):
-                    prediction_list.append(item)
-                    cnt += 1
-                    if cnt == int(settings_query['max_len']):
-                        break
-        else:
-            for item in choices:
-                if item.lower().startswith(text):
-                    prediction_list.append(item)
-                    cnt += 1
-                    if cnt == int(settings_query['max_len']):
-                        break
-        return prediction_list
+# def super_predictor(index_type, index_name, text):  # later
+#     #  index_type - uniquenames, uniqueidnames, names
+#     def myFunc(e):
+#         return e[1]
+#
+#     settings_query = baza.get_by_id("1337")
+#
+#     if index_type == "unique_names":
+#         choices = baza.get_unique_index_names(f"{index_name}")
+#     elif index_type == "unique_idnames":
+#         choices = baza.get_unique_index_idnames(f"{index_name}")
+#     else:
+#         choices = baza.get_index_names(f"{index_name}")
+#
+#     choices.sort(key=myFunc)
+#
+#     prediction_list = []
+#     cnt = 0
+#     if index_type == "unique_names" or "names":  # only names
+#         if settings_query['search']:
+#             for item in choices:
+#                 if item.lower().__contains__(text):
+#                     prediction_list.append(item)
+#                     cnt += 1
+#                     if cnt == int(settings_query['max_len']):
+#                         break
+#         else:
+#             for item in choices:
+#                 if item.lower().startswith(text):
+#                     prediction_list.append(item)
+#                     cnt += 1
+#                     if cnt == int(settings_query['max_len']):
+#                         break
+#         return prediction_list
+#     else:  # id, names
+#         if settings_query['search']:
+#             for item in choices:
+#                 if item.lower().__contains__(text):
+#                     prediction_list.append(item)
+#                     cnt += 1
+#                     if cnt == int(settings_query['max_len']):
+#                         break
+#         else:
+#             for item in choices:
+#                 if item.lower().startswith(text):
+#                     prediction_list.append(item)
+#                     cnt += 1
+#                     if cnt == int(settings_query['max_len']):
+#                         break
+#         return prediction_list
 
 
 def replace_bool(input_data):
@@ -625,7 +625,7 @@ class Pages:
                 else:
                     try:
                         value = int(text)
-                    except:  # oops
+                    except ValueError:  # oops
                         self.settingswindow['max_len'].Update(baza.get_by_id(1337)['max_len'])
                         continue
 
@@ -954,7 +954,7 @@ class Pages:
                             continue
 
                 except AttributeError:
-                    print('AttributeError')
+                    pass
 
                 if self.tsavailable == ["Комплект", "Составная часть", "Элемент"] and not master:
                     table1.clear()
@@ -1016,7 +1016,7 @@ class Pages:
                             elif current_level == 'Составная часть':
                                 item['level'] = 'Элемент'
                             else:
-                                print('RENAME EXEPTION')
+                                print('RENAME EXCEPTION')
 
                             if item['table']:
                                 for item1 in item['table']:
@@ -1050,15 +1050,10 @@ class Pages:
                 try:
                     pasted_content = json.loads(pyperclip.paste())['sp']
                 except (TypeError, ValueError):
-                    print('bad clipboard (not in format)')
                     sg.popup_no_frame(f'Ошибка вставки!'
                                       f'\nВставленный элемент не относится к программе.',
                                       auto_close_duration=1, auto_close=True, font=fontbig)
                     continue
-                # except ValueError:
-                #     print('not dict')
-                #     sg.popup_no_frame(f'Ошибка вставки!', auto_close_duration=1, auto_close=True, font=fontbig)
-                #     continue
 
                 current_level, object_name = values['level'], values['object']
                 pasted_content['object'] = object_name
@@ -1510,14 +1505,11 @@ class Pages:
                 if z["table"]:
                     for v in z["table"]:
                         temp2.append(list(v.values()))
-                        # temp2.append(v)
                 z["table"] = temp2.copy()
                 temp2.clear()
                 temp.append(list(z.values()))
-                # temp.append(z)
         dict_obj["table"] = temp
         return list(dict_obj.values())
-        # return dict_obj
 
     def trim_table(self, dict_obj):
         temp = dict_obj.copy()
@@ -1993,10 +1985,8 @@ class Pages:
                             f'СЗЗ - {str(obj_content["serial1"])}\n\n'
                             f'Вы хотите заменить {full_name}?')
                         if pop_answer:
-                            # entered_text = popup_input_text(f'Изменение {full_name}')
                             pass_state = True
                             while pass_state is True:
-                                # pass_state = False
                                 entered_text = popup_input_text(f'Изменение "{full_name}"')
                                 if entered_text is None:
                                     pass_state = False
@@ -2028,51 +2018,31 @@ class Pages:
 
                             if not baza.search_by_id_if_exists(obj_id):
                                 if search_if_item_in_index(obj_body['part'], parts_index) and save_state:
-                                    # save_state = duplicate_actions(obj_body, 'part')
                                     duplicate_actions(obj_body, 'part')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['part'], parts_index) and save_state:
-                                            # save_state = duplicate_actions(item, 'part')
                                             duplicate_actions(item, 'part')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['part'], parts_index) and save_state:
-                                                    # save_state = duplicate_actions(item1, 'part')
                                                     duplicate_actions(item1, 'part')
 
                                 if search_if_item_in_index(obj_body['serial1'], serials_index) and save_state:
-                                    # save_state = duplicate_actions(obj_body, 'serial1')
                                     duplicate_actions(obj_body, 'serial1')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['serial1'], serials_index) and save_state:
-                                            # save_state = duplicate_actions(item, 'serial1')
                                             duplicate_actions(item, 'serial1')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['serial1'],
                                                                            serials_index) and save_state:
-                                                    # save_state = duplicate_actions(item1, 'serial1')
                                                     duplicate_actions(item1, 'serial1')
-
-                                # if save_state:
-                                #     if values["-IN-"]:
-                                #         baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
-                                #     else:
-                                #         baza.add_dict(obj_body, obj_id)
-                                #     sg.popup_no_frame(
-                                #         f'"{str(obj_body["name"])}"\n'
-                                #         f'{str(obj_body["model"])}\n'
-                                #         f'{str(obj_body["part"])}\n'
-                                #         f'{str(obj_body["vendor"])}\n'
-                                #         f'\nимпортирован.',
-                                #         auto_close_duration=1,
-                                #         auto_close=True, font=fontbig, button_type=5)
 
                                 if values["-IN-"]:
                                     baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
@@ -2097,17 +2067,6 @@ class Pages:
                                     f'\nуже существует.',
                                     auto_close_duration=3,
                                     auto_close=True, font=fontbig, button_type=5)
-
-                                # С подтверждением
-                                # popup_yes_no(
-                                #     f'Наименование - {str(obj_body["name"])}\n'
-                                #     f'Модель - {str(obj_body["model"])}\n'
-                                #     f'SN - {str(obj_body["part"])}\n'
-                                #     f'Производитель - {str(obj_body["vendor"])}\n'
-                                #     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
-                                #     f'Уже существует, продолжить?')
-                                # pass
-
         self.importwindow.close()
 
     def set_items_sequence_page(self, headername, object_name):
