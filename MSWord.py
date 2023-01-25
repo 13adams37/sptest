@@ -1,3 +1,6 @@
+import re
+from copy import deepcopy
+
 import docx
 
 nonBreakSpace = u'\xa0'
@@ -8,24 +11,17 @@ def row_count(obj):
     if type(obj) == list:
         for element in obj:
             length += 1
-            if len(element[1]['table']):
-                length += len(element[1]['table'])
-                if len(element[1]['table']):
-                    for i in element[1]['table']:
+            if len(element['table']):
+                length += len(element['table'])
+                if len(element['table']):
+                    for i in element['table']:
                         length += len(i['table'])
-    else:
-        length += 1
-        if len(obj['table']):
-            length += len(obj['table'])
-            if len(obj['table']):
-                for i in obj['table']:
-                    length += len(i['table'])
     return length
 
 
 def empty_serial(serial):
     if not serial:
-        return "—"
+        return "–"
     else:
         return serial
 
@@ -39,7 +35,8 @@ def prep(elmtor):
     elmt = elmtor.copy()
     if elmt['part'] not in ("", "б/н"):
         elmt['part'] = f"№{nonBreakSpace}{elmt['part']}"
-    return f"{elmt['name']} {elmt['vendor']} {elmt['model']} {elmt['part']}"
+    output = f"{elmt['name']} {elmt['vendor']} {elmt['model']} {elmt['part']}"
+    return f"{re.sub(' +', ' ', output)}"
 
 
 class Word:
@@ -55,16 +52,8 @@ class Word:
 
         row = -1
         while row != rows or row <= rows:
-            items = []
-            for item in elements:
-                item = item[1]
-                if type(item) == dict:
-                    items.append(item)
-                else:
-                    items.append(elements)
-                    break
             counter = 0
-            for item in items:
+            for item in elements:
                 counter += 1
                 row += 1
                 editcell(table, row, 0, counter)
@@ -129,17 +118,8 @@ class Word:
         row = -1
 
         while row != rows or row <= rows:
-            items = []
-            for item in elements:
-                item = item[1]
-                if type(item) == dict:
-                    items.append(item)
-                else:
-                    items.append(elements)
-                    break
-
             counter = 0
-            for item in items:
+            for item in elements:
                 subcount = 0
                 counter += 1
                 row += 1
@@ -170,23 +150,15 @@ class Word:
         table.style = 'Table Grid'
         row = -1
         self.serial1_count = 0
-        self.serial1_count = 0
+        self.serial2_count = 0
 
         while row != rows or row <= rows:
-            items = []
-            for item in elements:
-                item = item[1]
-                if type(item) == dict:
-                    items.append(item)
-                else:
-                    items.append(elements)
-                    break
-
             counter = 0
-            for item in items:
+            for item in elements:
                 serialscounter = 0
                 counter += 1
                 row += 1
+                object_row = deepcopy(row)
                 editcell(table, row, 0, counter)
                 editcell(table, row, 1, item['name'])
                 editcell(table, row, 2, item['model'])
@@ -204,16 +176,64 @@ class Word:
                 editcell(table, row, 9, '2')
 
                 if item['table']:
+                    subcounter = 0
                     for item1 in item['table']:
-                        if item1['serial2']:
-                            serialscounter += int(item1['serial2']) * int(item1['amount'])
+                        try:
+                            if item1['selected']:
+
+                                subcounter += 1
+                                row += 1
+                                editcell(table, row, 0, f"{counter}.{subcounter}")
+                                editcell(table, row, 1, item1['name'])
+                                editcell(table, row, 2, item1['model'])
+                                editcell(table, row, 3, item1['part'])
+                                editcell(table, row, 4, item1['vendor'])
+                                editcell(table, row, 5, item1['amount'])
+                                editcell(table, row, 6, empty_serial(item1['serial1']))
+                                if item1['uv']:
+                                    editcell(table, row, 7, "УФ")
+                                else:
+                                    editcell(table, row, 7, empty_serial(item1['serial2']))
+                                editcell(table, row, 8, 'CC')
+                                editcell(table, row, 9, '2')
+
+                                self.serial1_count += 1 if item1['serial1'] else 0
+                                self.serial2_count += int(item1['serial2']) * int(item1['amount'])
+                        except KeyError:
+                            if item1['serial2']:
+                                serialscounter += int(item1['serial2']) * int(item1['amount'])
 
                         if item1['table']:
+                            subsubcounter = 0
                             for item2 in item1['table']:
-                                if item2['serial2']:
-                                    serialscounter += int(item2['serial2']) * int(item2['amount'])
+                                try:
+                                    if item2['selected']:
+                                        subsubcounter += 1
+                                        row += 1
+                                        if subcounter > 0:
+                                            editcell(table, row, 0, f"{counter}.{subcounter}.{subsubcounter}")
+                                        else:
+                                            editcell(table, row, 0, f"{counter}.{subsubcounter}")
+                                        editcell(table, row, 1, item2['name'])
+                                        editcell(table, row, 2, item2['model'])
+                                        editcell(table, row, 3, item2['part'])
+                                        editcell(table, row, 4, item2['vendor'])
+                                        editcell(table, row, 5, item2['amount'])
+                                        editcell(table, row, 6, empty_serial(item2['serial1']))
+                                        if item2['uv']:
+                                            editcell(table, row, 7, "УФ")
+                                        else:
+                                            editcell(table, row, 7, empty_serial(item2['serial2']))
+                                        editcell(table, row, 8, 'CC')
+                                        editcell(table, row, 9, '2')
 
-                editcell(table, row, 7, serialscounter)
+                                        self.serial1_count += 1 if item2['serial1'] else 0
+                                        self.serial2_count += int(item2['serial2']) * int(item2['amount'])
+                                except KeyError:
+                                    if item2['serial2']:
+                                        serialscounter += int(item2['serial2']) * int(item2['amount'])
+
+                editcell(table, object_row, 7, serialscounter)
                 self.serial2_count += serialscounter
             break
         doc.save(f'{output_name}.docx')
@@ -226,17 +246,8 @@ class Word:
         row = -1
 
         while row != rows or row <= rows:
-            items = []
-            for item in elements:
-                item = item[1]
-                if type(item) == dict:
-                    items.append(item)
-                else:
-                    items.append(elements)
-                    break
-
             counter = 0
-            for item in items:
+            for item in elements:
                 row += 1
                 counter += 1
                 subcount = 0

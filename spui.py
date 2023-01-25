@@ -500,6 +500,7 @@ class Pages:
         self.exportwordwindow = None
         self.importwindow = None
         self.seqwindow = None
+        self.conclusionwindow = None
 
         self.object = None
         self.tsdata = []
@@ -1836,11 +1837,25 @@ class Pages:
                 list_element.update(set_to_index=sel_item)
 
             elif event == '-OPEN-' and values["-IN-"]:
+                def make_listed_items(elements):
+                    items = []
+                    for element in elements:
+                        item = element[1]
+                        if type(item) == dict:
+                            items.append(item)
+                        else:
+                            items.append(elements)
+                            break
+                    return items
+
                 if baza.search_if_exists("$.object", values['-IN-']):
-                    objects = baza.search("$.object", values['-IN-'])
+                    objects = make_listed_items(baza.search("$.object", values['-IN-']))
+                    conclusion_data = self.set_conclusion_items_page(objects)
+                    if conclusion_data is None:
+                        continue
                     try:
                         mswordlib.act_table(objects, f"АКТ {values['-IN-']}")
-                        mswordlib.conclusion_table(objects, f"ЗАКЛЮЧЕНИЕ {values['-IN-']}")
+                        mswordlib.conclusion_table(conclusion_data, f"ЗАКЛЮЧЕНИЕ {values['-IN-']}")
                         mswordlib.methods_table(objects, f"МЕТОДЫ {values['-IN-']}")
                         mswordlib.ims_table(objects, f"СПИСОК ИМС {values['-IN-']}")
                         sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
@@ -2068,6 +2083,77 @@ class Pages:
                                     auto_close_duration=3,
                                     auto_close=True, font=fontbig, button_type=5)
         self.importwindow.close()
+
+    def set_conclusion_items_page(self, items_list):
+        def Text(text, size, justification, expand_x=None, key=None):
+            return sg.Text(text, size=size, pad=(1, 1), expand_x=expand_x, justification=justification, key=key)
+
+        def generate_display_layout(vals):
+            # Заполнение текста в фрейме
+            text_to_display = \
+                f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]}'
+            return [[Text(text_to_display, 95, 'l', True)], ]
+
+        def generate_displayed_items(content, text_key):
+            # Отображение элементов с чекбоксами
+            item_layout = [sg.Checkbox('', font=fontbig, enable_events=True, key=f'{text_key}'),
+                           sg.Frame('', generate_display_layout(content), pad=((0, 5), (0, 5)), relief=sg.RELIEF_FLAT)]
+            return item_layout
+
+        def generate_frame(object_values, frame_key):
+            # Вывод внутренних элементов в Комплекте
+            # Получает 1 Комплект, выводит все элементы в комплекте (3 уровня)
+
+            frame_layout = []
+            if object_values['table']:
+                for count1, level2 in enumerate(object_values['table']):
+                    key = f'{frame_key}_{count1}'
+                    frame_layout.append(generate_displayed_items(level2, key))
+                    if level2['table']:
+                        for count2, level3 in enumerate(level2['table']):
+                            frame_layout.append(generate_displayed_items(level3, f'{key}_{count2}'))
+            return sg.Frame(
+                f'{object_values["name"]} {object_values["model"]} {object_values["part"]} {object_values["vendor"]} '
+                f'{object_values["serial1"]}', frame_layout, pad=((0, 5), 0))
+
+        column_layout = [
+            [generate_frame(content, count)]
+            for count, content in enumerate(items_list)
+        ]
+        layout = [
+            [
+                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False, expand_x=True, expand_y=True,
+                          size_subsample_width=0.3),
+            ],
+            [
+                sg.Button('Далее', k='-NEXT-', font=fontbutton, expand_x=False),
+            ],
+        ]
+        window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
+                           element_justification='c', font=fontbig).Finalize()
+        window.Maximize()
+
+        while True:
+            event, values = window.read()
+            if event in (sg.WINDOW_CLOSED, 'Exit'):
+                window.close()
+                return None
+            elif event == '-NEXT-':
+                test_data = deepcopy(items_list)
+                keys_with_true_values = [key for key, value in values.items() if value == True]
+                # for list loop, get a path, add key to item
+                for item in keys_with_true_values:
+                    result = list(map(int, item.split("_")))
+                    selected_item = {}
+                    if len(result) == 1:
+                        selected_item = test_data[result[0]]
+                    elif len(result) == 2:
+                        selected_item = test_data[result[0]]['table'][result[1]]
+                    elif len(result) == 3:
+                        selected_item = test_data[result[0]]['table'][result[1]]['table'][result[2]]
+                    selected_item['selected'] = True
+                window.close()
+                return test_data
 
     def set_items_sequence_page(self, headername, object_name):
         input_width = 80
