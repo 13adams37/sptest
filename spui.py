@@ -2,10 +2,11 @@ import json
 import re
 import PySimpleGUI as sg
 import pyperclip
-
 import db
 import MSWord
+from datetime import datetime
 from copy import deepcopy
+
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
@@ -817,9 +818,9 @@ class Pages:
                   sg.Text('РГ пп', font=fontmid), sg.InputText(key='rggpp', s=(5, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(
-                [[sg.Text('Признак (уровень)', font=fontmid),
+                [[sg.Text(f'Признак (уровень) - {self.tsavailable[0]}', font=fontmid),
                   sg.Combo(self.tsavailable, readonly=True, enable_events=True, key="level",
-                           default_value=self.tsavailable[0], font=fontmidlow),
+                           default_value=self.tsavailable[0], font=fontmidlow, visible=False),  # unhandled errors
                   sg.Button("+", key="-ADDMORE-", visible=False, p=(15, 0), s=(3, 1), font=fontmid)],
                  ],
                 justification="c", element_justification="c"
@@ -837,7 +838,6 @@ class Pages:
                 key='-TABLE-'), ],
             [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="l", expand_x=True,
                      font=fontbutton),
-
              sg.Button("Копировать", k="-COPY-", font=fontbutton),
              sg.Button("Вставить", k="-PASTE-", font=fontbutton),
              sg.Text("", pad=(200, 0)),
@@ -881,12 +881,14 @@ class Pages:
 
         # fucking slaves get your ass back here
         if master == "slave":
+            print('slave')
             self.fun_slave()
             if self.tsdata[3] == 'б/н':
                 self.addtswindow["part"].update("б/н", disabled=True)
                 self.addtswindow['nopart'].update(True)
 
         if master == "editor":
+            print('editor')
             self.fun_vieweditor()
             if ts_id != (None, None):
                 if ts_id[1] == 0:
@@ -897,6 +899,12 @@ class Pages:
                 table1 = self.tsdata[12]
             if self.tsavailable == ["Составная часть", "Элемент"]:
                 table2 = self.tsdata[12]
+            # if self.tsdata[8]
+            print(self.tsdata[11])
+            if self.tsdata[11] == 'Элемент':
+                table.Update(visible=False)
+            # if self.tsavailable == ["Элемент"]:
+            #     table.Update(visible=False)
             self.last_event = "name"
             self.resize_and_update_table(self.tsdata[12])
             if self.tsdata[3] == 'б/н':
@@ -1123,7 +1131,8 @@ class Pages:
                     if inp != event:
                         self.addtswindow[f'-CONTAINER{inp}-'].update(visible=False)
 
-            elif event == "level" and not master == "slave":
+            # elif event == "level" and not master == "slave":
+            elif event == "level":  # later
                 if values[event] == "Комплект" or values[event] == "Составная часть":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
@@ -1383,8 +1392,10 @@ class Pages:
 
                 if values['level'] == "Комплект":
                     slave.tsavailable = ["Составная часть", "Элемент"]
-                    print(table1)
-                    table2 = deepcopy(table1[pos][12])
+                    try:
+                        table2 = deepcopy(table1[pos][12])
+                    except IndexError:
+                        print('err in level')
                 else:
                     slave.tsavailable = ["Элемент"]
 
@@ -1398,8 +1409,14 @@ class Pages:
 
                     self.resize_and_update_table(table1)
                 if slave.tsavailable == ["Элемент"]:
-                    table2[pos] = slave.tsdata
-                    self.resize_and_update_table(table2)
+                    try:
+                        table2[pos] = slave.tsdata
+                        self.resize_and_update_table(table2)
+                    except IndexError:
+                        print('err  save level')
+                        table1[pos] = slave.tsdata
+                        self.resize_and_update_table(table1)
+                        # update
 
             elif event == "bd_delete":
                 if popup_yes_no('Вы уверены что хотите удалить?'):
@@ -1502,6 +1519,8 @@ class Pages:
         for value in values:
             if value in allowed_list:
                 listed.append(values[value])
+        # my bad... changed in values position
+        listed.insert(8, listed.pop(6))
         if values["level"] == "Составная часть" or "Комплект":
             temptable = []
             tables = self.addtswindow["-TABLE-"].Get()
@@ -1900,6 +1919,7 @@ class Pages:
             [
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
+                sg.Button("Полный экспорт", key="-FULLEXP-", font=fontbutton),
                 sg.Button("Импортировать", key="-IMPORT-", font=fontbutton),
                 sg.Button("Экспортировать", key="-EXPORT-", font=fontbutton),
             ]
@@ -1968,6 +1988,18 @@ class Pages:
                 list_element.update(values=prediction_list)
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
+
+            elif event == '-FULLEXP-':
+                # print(datetime.now().strftime("%H:%M:%S"))
+                full_base = []
+                for itmid in iter(db.db):
+                    if itmid != "1337" or "444":
+                        print(itmid)
+                    # break
+                # with open(f'FULL BB {datetime.now().strftime("%H:%M:%S")}.json', 'w') as f:
+                #     f.truncate(0)
+                #     json.dump(full_base, f)
+
 
             elif event == '-EXPORT-' and values["-IN-"]:
                 if baza.search_if_exists("$.object", values['-IN-']):

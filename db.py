@@ -1,6 +1,5 @@
 import jsondblite
 
-
 try:
     db = jsondblite.Database("SATURN_MAIN.db", create=True)
     with db:
@@ -56,7 +55,6 @@ class DataBase:
         items = []
         with db:
             for item in db.get_index_values(index):
-                # if item[0] != '444' and item[1]:
                 items.append(item)
         return items
 
@@ -64,7 +62,6 @@ class DataBase:
         items = []
         ids = []
         for item in db.get_index_values(index):
-            # if item[0] != '444' and item[1]:
             items.append(item[1])
             ids.append(item[0])
         return items, ids
@@ -72,7 +69,6 @@ class DataBase:
     def get_unique_index_names(self, index):
         items = []
         for item in db.get_index_values(index):
-            # if item[0] != '444' and item[1]:
             items.append(item[1])
         return list(set(items))
 
@@ -191,4 +187,3 @@ if __name__ == "__main__":
     # }
     # with db:
     #     db.add(hints_dict, '444')
-
