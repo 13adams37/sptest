@@ -1,4 +1,8 @@
 import jsondblite
+import os
+
+if os.path.exists('saturn_test444.db'):
+    os.rename('saturn_test444.db', "SATURN_MAIN.db")
 
 try:
     db = jsondblite.Database("SATURN_MAIN.db", create=True)
