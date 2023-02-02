@@ -1919,7 +1919,6 @@ class Pages:
             [
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
-                sg.Button("Полный экспорт", key="-FULLEXP-", font=fontbutton),
                 sg.Button("Импортировать", key="-IMPORT-", font=fontbutton),
                 sg.Button("Экспортировать", key="-EXPORT-", font=fontbutton),
             ]
@@ -1988,18 +1987,6 @@ class Pages:
                 list_element.update(values=prediction_list)
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
-
-            elif event == '-FULLEXP-':
-                # print(datetime.now().strftime("%H:%M:%S"))
-                full_base = []
-                for itmid in iter(db.db):
-                    if itmid != "1337" or "444":
-                        print(itmid)
-                    # break
-                # with open(f'FULL BB {datetime.now().strftime("%H:%M:%S")}.json', 'w') as f:
-                #     f.truncate(0)
-                #     json.dump(full_base, f)
-
 
             elif event == '-EXPORT-' and values["-IN-"]:
                 if baza.search_if_exists("$.object", values['-IN-']):
