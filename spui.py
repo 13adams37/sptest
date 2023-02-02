@@ -596,7 +596,8 @@ class Pages:
             ],
             [
                 sg.Text('Чекбоксы для сохрнения полей при очистке (Добавление ТС): ', font=fontbig),
-                sg.DropDown(values=['Вкл', 'Выкл'], default_value="Вкл" if temp_settings_query['savestates'] else "Выкл",
+                sg.DropDown(values=['Вкл', 'Выкл'],
+                            default_value="Вкл" if temp_settings_query['savestates'] else "Выкл",
                             font=fontmid, key='savestates', readonly=True)
             ],
             [
@@ -803,14 +804,14 @@ class Pages:
 
                  [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
                   sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid, visible=self.savestates)],
-                 [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(3, 0), font=fontmid),
+                 [sg.Checkbox("УФ", font=fontmid, key='uv'),
+                  sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(3, 0), font=fontmid),
                   sg.Text('Кол-во', font=fontmid), sg.InputText(default_text="1", key='amount', font=fontmid, s=(3, 0))]
                  ]
                 , justification="c", element_justification="r"
             )],
             [sg.Column(
-                [[sg.Checkbox("УФ", font=fontmid, key='uv'),
-                  sg.Text('РГ', font=fontmid),
+                [[sg.Text('РГ', font=fontmid),
                   sg.Input(k='rgg', enable_events=True, font=fontmid, s=(10, 0)),
                   sg.Checkbox("Сохр.", k="rggSAVE", font=fontmid, visible=self.savestates),
                   sg.Text('РГ пп', font=fontmid), sg.InputText(key='rggpp', s=(5, 0), font=fontmid)]]
@@ -836,8 +837,10 @@ class Pages:
                 key='-TABLE-'), ],
             [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="l", expand_x=True,
                      font=fontbutton),
+
              sg.Button("Копировать", k="-COPY-", font=fontbutton),
              sg.Button("Вставить", k="-PASTE-", font=fontbutton),
+             sg.Text("", pad=(200, 0)),
              sg.Button("Удалить из БД", k="bd_delete", font=fontbutton, visible=False),
              sg.Button("Сохранить", k="_SAVE_", font=fontbutton),
              sg.Button("Очистить", font=fontbutton),
