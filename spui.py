@@ -512,6 +512,7 @@ class Pages:
         settings_query = baza.get_by_id("1337")
         self.search_type = settings_query['search']
         self.hints_type = settings_query['hints']
+        self.savestates = settings_query['savestates']
         self.jump_type = settings_query['jump']
         self.prediction_len = int(settings_query['max_len'])
 
@@ -594,6 +595,11 @@ class Pages:
                             font=fontmid, key='hints', readonly=True)
             ],
             [
+                sg.Text('Чекбоксы для сохрнения полей при очистке (Добавление ТС): ', font=fontbig),
+                sg.DropDown(values=['Вкл', 'Выкл'], default_value="Вкл" if temp_settings_query['savestates'] else "Выкл",
+                            font=fontmid, key='savestates', readonly=True)
+            ],
+            [
                 sg.Text('Переход к новому полю через Enter (Добавление ТС): ', font=fontbig),
                 sg.DropDown(values=['Вкл', 'Выкл'], default_value="Вкл" if temp_settings_query['jump'] else "Выкл",
                             font=fontmid, key='jump', readonly=True)
@@ -632,6 +638,7 @@ class Pages:
 
                 temp_settings = {'search': True if values['search'] == 'По содержанию' else False,
                                  'hints': True if values['hints'] == 'Вкл' else False,
+                                 'savestates': True if values['savestates'] == 'Вкл' else False,
                                  'jump': True if values['jump'] == 'Вкл' else False,
                                  'max_len': values['max_len']}
 
@@ -639,6 +646,7 @@ class Pages:
                 self.hints_type = temp_settings['hints']
                 self.jump_type = temp_settings['jump']
                 self.search_type = temp_settings['search']
+                self.savestates = temp_settings['savestates']
                 self.prediction_len = int(temp_settings['max_len'])
                 self.settingswindow.close()
                 break
@@ -758,7 +766,7 @@ class Pages:
             [sg.Column(
                 [[sg.Text('Наименование ТС', font=fontmid),
                   sg.Input(key='name', size=(45, 0), font=fontmid, enable_events=True),
-                  sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid)],
+                  sg.Checkbox("Сохр.", k="nameSAVE", font=fontmid, visible=self.savestates)],
 
                  [sg.pin(sg.Col(
                      [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXname-',
@@ -767,7 +775,7 @@ class Pages:
 
                  [sg.Text('Модель', font=fontmid),
                   sg.Input(key='model', size=(45, 0), font=fontmid, enable_events=True),
-                  sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid)],
+                  sg.Checkbox("Сохр.", k="modelSAVE", font=fontmid, visible=self.savestates)],
 
                  [sg.pin(sg.Col(
                      [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXmodel-',
@@ -777,7 +785,7 @@ class Pages:
                  [sg.Text('Заводской номер', font=fontmid),
                   sg.Input(key='part', enable_events=True, font=fontmid, s=(39, 0)),
                   sg.Checkbox("б/н", k="nopart", enable_events=True, font=fontmid),
-                  sg.Checkbox("Сохр.", k="partSAVE", font=fontmid)],
+                  sg.Checkbox("Сохр.", k="partSAVE", font=fontmid, visible=self.savestates)],
 
                  [sg.pin(sg.Col(
                      [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXpart-',
@@ -786,7 +794,7 @@ class Pages:
 
                  [sg.Text('Производитель', font=fontmid),
                   sg.Input(key='vendor', size=(45, 0), font=fontmid, enable_events=True),
-                  sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid)],
+                  sg.Checkbox("Сохр.", k="vendorSAVE", font=fontmid, visible=self.savestates)],
 
                  [sg.pin(sg.Col(
                      [[sg.Listbox(values=[], size=(35, 4), enable_events=True, key='-BOXvendor-',
@@ -794,7 +802,7 @@ class Pages:
                      key='-CONTAINERvendor-', pad=(105, 0), visible=False, justification='c'))],
 
                  [sg.Text('СЗЗ-1', font=fontmid), sg.InputText(key='serial1', font=fontmid, s=(15, 0)),
-                  sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid)],
+                  sg.Checkbox("Сохр.", k="serial1SAVE", font=fontmid, visible=self.savestates)],
                  [sg.Text('СЗЗ-2', font=fontmid), sg.InputText(key='serial2', s=(3, 0), font=fontmid),
                   sg.Text('Кол-во', font=fontmid), sg.InputText(default_text="1", key='amount', font=fontmid, s=(3, 0))]
                  ]
@@ -804,7 +812,7 @@ class Pages:
                 [[sg.Checkbox("УФ", font=fontmid, key='uv'),
                   sg.Text('РГ', font=fontmid),
                   sg.Input(k='rgg', enable_events=True, font=fontmid, s=(10, 0)),
-                  sg.Checkbox("Сохр.", k="rggSAVE", font=fontmid),
+                  sg.Checkbox("Сохр.", k="rggSAVE", font=fontmid, visible=self.savestates),
                   sg.Text('РГ пп', font=fontmid), sg.InputText(key='rggpp', s=(5, 0), font=fontmid)]]
                 , justification="c")],
             [sg.Column(

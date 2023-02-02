@@ -2,7 +2,7 @@ import jsondblite
 
 
 try:
-    db = jsondblite.Database("saturn_test444.db", create=True)
+    db = jsondblite.Database("SATURN_MAIN.db", create=True)
     with db:
         db.create_index("objects", "$.object")
         db.create_index("names", "$..name")
@@ -10,9 +10,9 @@ try:
         db.create_index("parts", "$..part")
         db.create_index("vendors", "$..vendor")
         db.create_index("serials", "$..serial1")
-        db.add({"search": True, "hints": True, "jump": True, "max_len": "0"}, "1337")
+        db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0"}, "1337")
 except OSError:
-    db = jsondblite.Database("saturn_test444.db", create=False)
+    db = jsondblite.Database("SATURN_MAIN.db", create=False)
 
 keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
