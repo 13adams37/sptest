@@ -1307,7 +1307,7 @@ class Pages:
                 if not window_saved:
                     if not popup_yes_no('Уверены что хотите очистить без сохранения?'):
                         continue
-                whitelist = ['object', 'serial2', 'level', '-TABLE-', 'nopart', 'amount']
+                whitelist = ['object', 'level', '-TABLE-', 'nopart', 'amount']
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1', 'rgg']
                 rmlist = []
                 window_saved = False
