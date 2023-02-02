@@ -12,6 +12,13 @@ try:
         db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0"}, "1337")
 except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
+    # savestates
+    req = db['1337']
+    try:
+        test1 = req['savestates']
+    except KeyError:
+        with db:
+            db.update('1337', {'search': req['search'], 'hints': req['hints'], 'savestates': True, 'jump': req['jump'], 'max_len': req['max_len']})
 
 keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
