@@ -1,10 +1,10 @@
 import jsondblite
-import os
-
-if os.path.exists('saturn_test444.db'):
-    if os.path.exists('SATURN_MAIN.db'):
-        os.rename('SATURN_MAIN.db', 'SATURN_MAIN_old.db')
-    os.rename('saturn_test444.db', 'SATURN_MAIN.db')
+# import os
+#
+# if os.path.exists('saturn_test444.db'):
+#     if os.path.exists('SATURN_MAIN.db'):
+#         os.rename('SATURN_MAIN.db', 'SATURN_MAIN_old.db')
+#     os.rename('saturn_test444.db', 'SATURN_MAIN.db')
 
 try:
     db = jsondblite.Database("SATURN_MAIN.db", create=True)
@@ -19,12 +19,12 @@ try:
 except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
     # savestates
-    req = db['1337']
-    try:
-        test1 = req['savestates']
-    except KeyError:
-        with db:
-            db.update('1337', {'search': req['search'], 'hints': req['hints'], 'savestates': True, 'jump': req['jump'], 'max_len': req['max_len']})
+    # req = db['1337']
+    # try:
+    #     test1 = req['savestates']
+    # except KeyError:
+    #     with db:
+    #         db.update('1337', {'search': req['search'], 'hints': req['hints'], 'savestates': True, 'jump': req['jump'], 'max_len': req['max_len']})
 
 keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']

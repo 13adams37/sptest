@@ -520,7 +520,7 @@ class Pages:
     def mainpage(self):
         mainpage = [
             [sg.Column(
-                [[sg.Button('Добавление ТС', key="-Add-", enable_events=True,
+                [[sg.Button('Добавление', key="-Add-", enable_events=True,
                             expand_x=True,
                             expand_y=True,
                             pad=(30, 30),
@@ -529,7 +529,7 @@ class Pages:
                             border_width=0,
                             font=fontbig,
                             ),
-                  sg.Button('Редактирование и просмотр ТС', key="-Edit-", enable_events=True,
+                  sg.Button('Редактирование и просмотр', key="-Edit-", enable_events=True,
                             expand_x=True,
                             expand_y=True,
                             pad=(30, 30),
@@ -537,9 +537,9 @@ class Pages:
                             button_color=(sg.theme_text_color(), sg.theme_background_color()),
                             border_width=0,
                             font=fontbig
-                            )], ], )],
+                            )], ], justification='c')],
             [sg.Column(
-                [[sg.Button('Импорт и экспорт базы', key="-Import-", enable_events=True,
+                [[sg.Button('Импорт\rэкспорт', key="-Import-", enable_events=True,
                             expand_x=True,
                             expand_y=True,
                             pad=(30, 30),
@@ -558,7 +558,7 @@ class Pages:
                             font=fontbig
                             )], ], justification='c')],
             [sg.Column(
-                [[sg.Button('Дополнительно', key="-Extra-", enable_events=True,
+                [[sg.Button('Изменение\nпоследовательности', key="-Extra-", enable_events=True,
                             expand_x=True,
                             expand_y=True,
                             pad=(30, 30),
@@ -881,14 +881,12 @@ class Pages:
 
         # fucking slaves get your ass back here
         if master == "slave":
-            print('slave')
             self.fun_slave()
             if self.tsdata[3] == 'б/н':
                 self.addtswindow["part"].update("б/н", disabled=True)
                 self.addtswindow['nopart'].update(True)
 
         if master == "editor":
-            print('editor')
             self.fun_vieweditor()
             if ts_id != (None, None):
                 if ts_id[1] == 0:
@@ -899,12 +897,8 @@ class Pages:
                 table1 = self.tsdata[12]
             if self.tsavailable == ["Составная часть", "Элемент"]:
                 table2 = self.tsdata[12]
-            # if self.tsdata[8]
-            print(self.tsdata[11])
             if self.tsdata[11] == 'Элемент':
                 table.Update(visible=False)
-            # if self.tsavailable == ["Элемент"]:
-            #     table.Update(visible=False)
             self.last_event = "name"
             self.resize_and_update_table(self.tsdata[12])
             if self.tsdata[3] == 'б/н':
@@ -2152,7 +2146,7 @@ class Pages:
         ]
         layout = [
             [
-                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False, expand_x=True, expand_y=True,
+                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False, expand_x=True, expand_y=False,
                           size_subsample_width=0.3),
             ],
             [
@@ -2160,7 +2154,7 @@ class Pages:
             ],
         ]
         window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
-                           element_justification='c', font=fontbig).Finalize()
+                           element_justification='c', font=fontbig, return_keyboard_events=True).Finalize()
         window.Maximize()
 
         while True:
@@ -2168,7 +2162,7 @@ class Pages:
             if event in (sg.WINDOW_CLOSED, 'Exit'):
                 window.close()
                 return None
-            elif event == '-NEXT-':
+            elif event == '-NEXT-' or event == '\r':
                 test_data = deepcopy(items_list)
                 keys_with_true_values = [key for key, value in values.items() if value == True]
                 # for list loop, get a path, add key to item
@@ -2248,8 +2242,10 @@ class Pages:
 
             return original_list
 
-        def alphabetical_sort(items_ids):  # gets item_ids, returns sorted list of id and content by name
-            pass
+        def alphabetical_sort(items_ids, items_values):  # gets item_ids, returns sorted list of id and content by name
+            sorted_test_values = sorted(items_values, key=lambda x: x[1])
+            sorted_test_ids = [items_ids[items_values.index(itm)] for itm in sorted_test_values]
+            return sorted_test_ids
 
         seqlayout = [
             [
@@ -2268,6 +2264,7 @@ class Pages:
             [
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
+                sg.Button("Сортировка по алфавиту", key="-ALPHABET-", font=fontbutton),
                 sg.Button("Сохранить", key="-SAVE-", font=fontbutton),
             ]
         ]
@@ -2313,6 +2310,9 @@ class Pages:
                     baza.delete_by_id(item)
                     baza.add_dict(content, item)
 
+            elif event == '-ALPHABET-':
+                re_renumerate_items(alphabetical_sort(test_ids, test_vals))
+
 
 class SpUi:
 
@@ -2354,7 +2354,7 @@ class SpUi:
             elif event == "-Extra-":
                 pages.window.Hide()
                 while True:
-                    object_name = real_popup_input_text_with_hints('Выбор объекта', "Введите название объекта")
+                    object_name = real_popup_input_text_with_hints('Выбор объекта для изменеия последовательности', "Введите название объекта")
                     if object_name is None:
                         break
                     else:
