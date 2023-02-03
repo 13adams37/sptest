@@ -1054,7 +1054,6 @@ class Pages:
                         for item in temp_table:
                             table1.append(item)
                     elif current_max_depth == 2:
-                        # table ?
                         for item in temp_table:
                             table2.append(item)
                     else:
@@ -2144,17 +2143,25 @@ class Pages:
             [generate_frame(content, count)]
             for count, content in enumerate(items_list)
         ]
+
         layout = [
             [
-                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False, expand_x=True, expand_y=False,
-                          size_subsample_width=0.3),
+                sg.Column(
+                    [
+                        [sg.Button('Далее', k='-NEXT-', font=fontbutton, auto_size_button=True), ]
+                    ],
+                )
             ],
             [
-                sg.Button('Далее', k='-NEXT-', font=fontbutton, expand_x=False),
+                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False,
+                          expand_x=True, expand_y=True,
+
+                          ),
             ],
         ]
         window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
-                           element_justification='c', font=fontbig, return_keyboard_events=True).Finalize()
+                           element_justification='c', font=fontbig, return_keyboard_events=True
+                           ).Finalize()
         window.Maximize()
 
         while True:
