@@ -170,7 +170,7 @@ class Word:
                 self.serial1_count += 1 if item['serial1'] else 0
 
                 if item['serial2']:
-                    serialscounter += int(item['serial2']) * int(item['amount'])
+                    serialscounter += int(item['serial2'])
 
                 editcell(table, row, 8, 'CC')
                 editcell(table, row, 9, '2')
@@ -180,9 +180,10 @@ class Word:
                     for item1 in item['table']:
                         try:
                             if item1['selected']:
-
                                 subcounter += 1
                                 row += 1
+                                level2serial = 0
+
                                 editcell(table, row, 0, f"{counter}.{subcounter}")
                                 editcell(table, row, 1, item1['name'])
                                 editcell(table, row, 2, item1['model'])
@@ -190,18 +191,25 @@ class Word:
                                 editcell(table, row, 4, item1['vendor'])
                                 editcell(table, row, 5, item1['amount'])
                                 editcell(table, row, 6, empty_serial(item1['serial1']))
-                                if item1['uv']:
-                                    editcell(table, row, 7, "УФ")
-                                else:
-                                    editcell(table, row, 7, empty_serial(item1['serial2']))
                                 editcell(table, row, 8, 'CC')
                                 editcell(table, row, 9, '2')
 
+                                if item1['table']:
+                                    for it2 in item1['table']:
+                                        if it2['serial2'] and not it2['uv']:
+                                            level2serial += int(it2['serial2'])
+
+                                if item1['serial2'] and not item1['uv']:
+                                    editcell(table, row, 7, int(item1['serial2'] + level2serial))
+                                else:
+                                    editcell(table, row, 7, "ERROR")
+
                                 self.serial1_count += 1 if item1['serial1'] else 0
-                                self.serial2_count += int(item1['serial2']) * int(item1['amount'])
+                                self.serial2_count += int(item1['serial2'] + level2serial)
+                                continue  # ?????
                         except KeyError:
                             if item1['serial2']:
-                                serialscounter += int(item1['serial2']) * int(item1['amount'])
+                                serialscounter += int(item1['serial2'])
 
                         if item1['table']:
                             subsubcounter = 0
@@ -220,18 +228,19 @@ class Word:
                                         editcell(table, row, 4, item2['vendor'])
                                         editcell(table, row, 5, item2['amount'])
                                         editcell(table, row, 6, empty_serial(item2['serial1']))
-                                        if item2['uv']:
-                                            editcell(table, row, 7, "УФ")
-                                        else:
-                                            editcell(table, row, 7, empty_serial(item2['serial2']))
                                         editcell(table, row, 8, 'CC')
                                         editcell(table, row, 9, '2')
 
+                                        if item2['serial2'] and not item2['uv']:
+                                            editcell(table, row, 7, int(item2['serial2']))
+                                        else:
+                                            editcell(table, row, 7, "ERROR")
+
                                         self.serial1_count += 1 if item2['serial1'] else 0
-                                        self.serial2_count += int(item2['serial2']) * int(item2['amount'])
+                                        self.serial2_count += int(item2['serial2'])
                                 except KeyError:
                                     if item2['serial2']:
-                                        serialscounter += int(item2['serial2']) * int(item2['amount'])
+                                        serialscounter += int(item2['serial2'])
 
                 editcell(table, object_row, 7, serialscounter)
                 self.serial2_count += serialscounter
