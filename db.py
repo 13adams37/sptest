@@ -1,4 +1,5 @@
 import jsondblite
+import pandas as pd
 # import os
 #
 # if os.path.exists('saturn_test444.db'):
@@ -19,12 +20,12 @@ try:
 except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
     # savestates
-    # req = db['1337']
-    # try:
-    #     test1 = req['savestates']
-    # except KeyError:
-    #     with db:
-    #         db.update('1337', {'search': req['search'], 'hints': req['hints'], 'savestates': True, 'jump': req['jump'], 'max_len': req['max_len']})
+    req = db['1337']
+    try:
+        test1 = req['savestates']
+    except KeyError:
+        with db:
+            db.update('1337', {'search': req['search'], 'hints': req['hints'], 'savestates': True, 'jump': req['jump'], 'max_len': req['max_len']})
 
 keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
@@ -187,16 +188,54 @@ if __name__ == "__main__":
     #         dict_main['table'] = []
     #         dict_list.append(dict_main)
     #     return dict_list
-    #
-    # hints_dict = {
-    #     '2015': get_dict_excelsheet_by_year('2015'),
-    #     '2016': get_dict_excelsheet_by_year('2016'),
-    #     '2017': get_dict_excelsheet_by_year('2017'),
-    #     '2018': get_dict_excelsheet_by_year('2018'),
-    #     '2019': get_dict_excelsheet_by_year('2019'),
-    #     '2020': get_dict_excelsheet_by_year('2020'),
-    #     '2021': get_dict_excelsheet_by_year('2021'),
-    #     '2022': get_dict_excelsheet_by_year('2022')
-    # }
-    # with db:
-    #     db.add(hints_dict, '444')
+
+    def get_dict_excelsheet_by_year(year):
+        df = pd.read_excel('База.xlsx', sheet_name=year)
+        dict_list = []
+
+        seen = set()
+        for row in df.iterrows():
+            main = row[1]
+            if str(main['amount']) == 'nan':  # break line detection
+                continue
+
+            for item in main.to_dict():
+                if str(main[item]) == 'nan':
+                    main[item] = ""
+                else:
+                    main[item] = str(main[item]).strip()
+
+            dict_main = main.to_dict()
+            dict_main['object'] = dict_main['object'].rstrip("0123456789")
+            dict_main['amount'] = dict_main['amount'].rstrip("0123456789")
+            if len(dict_main['serial1']) == 1:
+                dict_main['serial1'] = ""
+            if dict_main['serial2'] == '–':
+                dict_main['serial2'] = ""
+            dict_main['uv'] = False
+            dict_main['rgg'] = ""
+            dict_main['rggpp'] = ""
+            dict_main['level'] = "Комплект"
+            dict_main['table'] = []
+
+            dict_main_without_lists = {k: v for k, v in dict_main.items() if not isinstance(v, (list, bool))}
+            tuple_main = tuple(dict_main_without_lists.items())
+            if tuple_main not in seen:
+                seen.add(tuple_main)
+                dict_list.append(dict_main)
+        return dict_list
+
+
+    # print(get_dict_excelsheet_by_year('2022'))
+    hints_dict = {
+        '2015': get_dict_excelsheet_by_year('2015'),
+        '2016': get_dict_excelsheet_by_year('2016'),
+        '2017': get_dict_excelsheet_by_year('2017'),
+        '2018': get_dict_excelsheet_by_year('2018'),
+        '2019': get_dict_excelsheet_by_year('2019'),
+        '2020': get_dict_excelsheet_by_year('2020'),
+        '2021': get_dict_excelsheet_by_year('2021'),
+        '2022': get_dict_excelsheet_by_year('2022')
+    }
+    with db:
+        db.add(hints_dict, '444')
