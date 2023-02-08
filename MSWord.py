@@ -146,7 +146,7 @@ class Word:
     def conclusion_table(self, elements, output_name):
         doc = docx.Document()
         rows = row_count(elements)
-        table = doc.add_table(rows=rows, cols=10)
+        table = doc.add_table(rows=rows, cols=8)
         table.style = 'Table Grid'
         row = -1
         self.serial1_count = 0
@@ -172,9 +172,6 @@ class Word:
                 if item['serial2']:
                     serialscounter += int(item['serial2'])
 
-                editcell(table, row, 8, 'CC')
-                editcell(table, row, 9, '2')
-
                 if item['table']:
                     subcounter = 0
                     for item1 in item['table']:
@@ -192,8 +189,6 @@ class Word:
                                 editcell(table, row, 4, item1['vendor'])
                                 editcell(table, row, 5, item1['amount'])
                                 editcell(table, row, 6, empty_serial(item1['serial1']))
-                                editcell(table, row, 8, 'CC')
-                                editcell(table, row, 9, '2')
 
                                 if item1['table']:
                                     subsubcount = 0
@@ -209,8 +204,6 @@ class Word:
                                                 editcell(table, row, 4, it2['vendor'])
                                                 editcell(table, row, 5, it2['amount'])
                                                 editcell(table, row, 6, empty_serial(it2['serial1']))
-                                                editcell(table, row, 8, 'CC')
-                                                editcell(table, row, 9, '2')
 
                                                 if it2['serial2'] and not it2['uv']:
                                                     editcell(table, row, 7, int(it2['serial2']))
@@ -251,8 +244,6 @@ class Word:
                                         editcell(table, row, 4, item2['vendor'])
                                         editcell(table, row, 5, item2['amount'])
                                         editcell(table, row, 6, empty_serial(item2['serial1']))
-                                        editcell(table, row, 8, 'CC')
-                                        editcell(table, row, 9, '2')
 
                                         if item2['serial2'] and not item2['uv']:
                                             editcell(table, row, 7, int(item2['serial2']))
