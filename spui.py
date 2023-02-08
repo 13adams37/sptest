@@ -2005,7 +2005,7 @@ class Pages:
                                 item1['object'] = to
                                 if item1['table']:
                                     for item2 in item1['table']:
-                                        item2['table'] = to
+                                        item2['object'] = to
                         return temp
 
                     def search_if_item_in_index(item, index_values):
