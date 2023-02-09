@@ -7,7 +7,6 @@ import MSWord
 from datetime import datetime
 from copy import deepcopy
 
-
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -43,6 +42,32 @@ def _onKeyRelease(event):
 
     if event.keycode == 78 and ctrl:  # ctrl + n, clear
         event.widget.event_generate("<<MyClear>>")
+
+
+def popup_yes(main_text='Заглушка'):
+    layout = [[
+        sg.Column([
+            [sg.T("         ")],
+            [sg.T(f"{main_text}", font=fontbig)],
+        ], justification="c", element_justification="c")
+    ], [
+        sg.Column([
+            [sg.Cancel('Ок', font=fontbutton, s=(15, 0)), ],
+        ], justification="c", element_justification="c")
+    ]]
+    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True,
+                         keep_on_top=True).Finalize()
+
+    while True:
+        event, values = popupwin.read()
+
+        if event == sg.WIN_CLOSED:
+            popupwin.close()
+            return 0
+
+        elif event.startswith("\r") or event == 'Да':
+            popupwin.close()
+            return 1
 
 
 def popup_yes_no(main_text='Заглушка'):
@@ -1293,27 +1318,23 @@ class Pages:
 
                     if master == 'slave' or (master == 'editor' and (ts_id == (None, None) or ts_id[1] == 1)):
                         self.tsdata = self.get_tsvalues(values)
-                        sg.popup_no_frame(f'"{values["name"]}" изменён.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
+                        popup_yes(f'"{values["name"]}" изменён.')
                         self.addtswindow.close()
 
                     elif master == 'editor' and ts_id != (None, None) and ts_id[1] == 0:
                         baza.update_element(ts_id[0], self.get_tsvalues(values))
-                        sg.popup_no_frame(f'"{values["name"]}" изменён в базе.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
+                        popup_yes(f'"{values["name"]}" изменён в базе.')
 
                     elif master == True:  # ♂oh shit im sorry♂
                         baza.add(self.get_tsvalues(values))
-                        sg.popup_no_frame(f'"{values["name"]}" добавлен в базу.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
+                        popup_yes(f'"{values["name"]}" добавлен в базу.')
 
                     else:
                         if self.tsavailable == ["Составная часть", "Элемент"]:
                             self.insert_values_into_table(self.get_tsvalues(values), table1)
                         if self.tsavailable == ["Элемент"]:
                             self.insert_values_into_table(self.get_tsvalues(values), table2)
-                        sg.popup_no_frame(f'"{values["name"]}" добавлен.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
+                        popup_yes(f'"{values["name"]}" добавлен.')
                     window_saved = True
 
             elif event == "Очистить":
@@ -2361,7 +2382,8 @@ class SpUi:
             elif event == "-Extra-":
                 pages.window.Hide()
                 while True:
-                    object_name = real_popup_input_text_with_hints('Выбор объекта для изменеия последовательности', "Введите название объекта")
+                    object_name = real_popup_input_text_with_hints('Выбор объекта для изменеия последовательности',
+                                                                   "Введите название объекта")
                     if object_name is None:
                         break
                     else:
