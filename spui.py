@@ -541,6 +541,7 @@ class Pages:
         self.savestates = settings_query['savestates']
         self.jump_type = settings_query['jump']
         self.prediction_len = int(settings_query['max_len'])
+        self.theme = settings_query['theme']
 
     def mainpage(self):
         mainpage = [
@@ -636,6 +637,12 @@ class Pages:
                 sg.InputText(default_text=int(temp_settings_query['max_len']), font=fontmid, key='max_len', s=(8, 0))
             ],
             [
+                sg.Text('Выбор темы (применение после перезагрузки)', font=fontbig),
+                sg.DropDown(values=sg.theme_list(),
+                            default_value=temp_settings_query['theme'] if temp_settings_query['theme'] else "DarkAmber",
+                            font=fontmid, key='theme', readonly=True, enable_events=True)
+            ],
+            [
                 sg.Text('Назад', key="-CLOSE-", enable_events=True, justification="l", expand_x=True,
                         font=fontbutton)
             ]
@@ -646,6 +653,7 @@ class Pages:
 
         while True:
             event, values = self.settingswindow.read()
+
 
             if event == sg.WIN_CLOSED:
                 self.settingswindow.close()
@@ -667,7 +675,8 @@ class Pages:
                                  'hints': True if values['hints'] == 'Вкл' else False,
                                  'savestates': True if values['savestates'] == 'Вкл' else False,
                                  'jump': True if values['jump'] == 'Вкл' else False,
-                                 'max_len': values['max_len']}
+                                 'max_len': values['max_len'],
+                                 'theme': values['theme']}
 
                 baza.update_element_dict('1337', temp_settings)
                 self.hints_type = temp_settings['hints']
@@ -675,6 +684,7 @@ class Pages:
                 self.search_type = temp_settings['search']
                 self.savestates = temp_settings['savestates']
                 self.prediction_len = int(temp_settings['max_len'])
+                self.theme = temp_settings['theme']
                 self.settingswindow.close()
                 break
 
@@ -689,8 +699,8 @@ class Pages:
                 [[sg.Listbox(values=[], size=(80, 4), enable_events=True, key='-BOX-',
                              select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
                 key='-BOX-CONTAINER-', pad=(0, 0), visible=True if self.hints_type else False))],
-            [sg.Button('Дальше', size=(15, 0), button_color='green', font=fontbutton),
-             sg.Cancel('Отмена', button_color='red', font=fontbutton)]
+            [sg.Button('Далее', size=(15, 0), font=fontbutton),
+             sg.Cancel('Отмена', font=fontbutton)]
         ]
         self.credentialswindow = sg.Window('Выбор объекта', credentialslayout, resizable=True,
                                            return_keyboard_events=True, element_justification="c")
@@ -2042,24 +2052,27 @@ class Pages:
                             f'SN - {str(obj_content["part"])}\n'
                             f'Производитель - {str(obj_content["vendor"])}\n'
                             f'СЗЗ - {str(obj_content["serial1"])}\n\n'
-                            f'Вы хотите заменить {full_name}?')
+                            f'Вы хотите добавить?')
                         if pop_answer:
-                            pass_state = True
-                            while pass_state is True:
-                                entered_text = popup_input_text(f'Изменение "{full_name}"')
-                                if entered_text is None:
-                                    pass_state = False
-                                    return False
-                                elif entered_text not in baza.get_unique_index_names(
-                                        "parts" if name == 'part' else 'serials') and entered_text != "":
-                                    obj_content[name] = entered_text
-                                    pass_state = False
-                                else:
-                                    sg.popup_no_frame(
-                                        f'Введённый вами номер уже есть в базе!',
-                                        auto_close_duration=1,
-                                        auto_close=True, font=fontbig, button_type=5)
-                                    pass_state = True
+                            if popup_yes_no(f'Хотите изменить {full_name}?'):
+                                pass_state = True
+                                while pass_state is True:
+                                    entered_text = popup_input_text(f'Изменение "{full_name}"')
+                                    if entered_text is None:
+                                        pass_state = False
+                                        return False
+                                    elif entered_text not in baza.get_unique_index_names(
+                                            "parts" if name == 'part' else 'serials') and entered_text != "":
+                                        obj_content[name] = entered_text
+                                        pass_state = False
+                                    else:
+                                        sg.popup_no_frame(
+                                            f'Введённый вами номер уже есть в базе!',
+                                            auto_close_duration=1,
+                                            auto_close=True, font=fontbig, button_type=5)
+                                        pass_state = True
+                            # else:
+                            #     pass
 
                             return True
                         else:
@@ -2077,44 +2090,44 @@ class Pages:
 
                             if not baza.search_by_id_if_exists(obj_id):
                                 if search_if_item_in_index(obj_body['part'], parts_index) and save_state:
-                                    duplicate_actions(obj_body, 'part')
+                                    save_state = duplicate_actions(obj_body, 'part')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['part'], parts_index) and save_state:
-                                            duplicate_actions(item, 'part')
+                                            save_state = duplicate_actions(item, 'part')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['part'], parts_index) and save_state:
-                                                    duplicate_actions(item1, 'part')
+                                                    save_state = duplicate_actions(item1, 'part')
 
                                 if search_if_item_in_index(obj_body['serial1'], serials_index) and save_state:
-                                    duplicate_actions(obj_body, 'serial1')
+                                    save_state = duplicate_actions(obj_body, 'serial1')
 
                                 if obj_body['table'] and save_state:
                                     for item in obj_body['table']:
                                         if search_if_item_in_index(item['serial1'], serials_index) and save_state:
-                                            duplicate_actions(item, 'serial1')
+                                            save_state = duplicate_actions(item, 'serial1')
 
                                         if item['table']:
                                             for item1 in item['table']:
                                                 if search_if_item_in_index(item1['serial1'],
                                                                            serials_index) and save_state:
-                                                    duplicate_actions(item1, 'serial1')
-
-                                if values["-IN-"]:
-                                    baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
-                                else:
-                                    baza.add_dict(obj_body, obj_id)
-                                sg.popup_no_frame(
-                                    f'"{str(obj_body["name"])}"\n'
-                                    f'{str(obj_body["model"])}\n'
-                                    f'{str(obj_body["part"])}\n'
-                                    f'{str(obj_body["vendor"])}\n'
-                                    f'\nимпортирован.',
-                                    auto_close_duration=1,
-                                    auto_close=True, font=fontbig, button_type=5)
+                                                    save_state = duplicate_actions(item1, 'serial1')
+                                if save_state:
+                                    if values["-IN-"]:
+                                        baza.add_dict(change_obj(obj_body, values["-IN-"]), obj_id)
+                                    else:
+                                        baza.add_dict(obj_body, obj_id)
+                                    sg.popup_no_frame(
+                                        f'"{str(obj_body["name"])}"\n'
+                                        f'{str(obj_body["model"])}\n'
+                                        f'{str(obj_body["part"])}\n'
+                                        f'{str(obj_body["vendor"])}\n'
+                                        f'\nимпортирован.',
+                                        auto_close_duration=1,
+                                        auto_close=True, font=fontbig, button_type=5)
 
                             else:
                                 sg.popup_no_frame(
@@ -2124,8 +2137,14 @@ class Pages:
                                     f'Производитель - {str(obj_body["vendor"])}\n'
                                     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
                                     f'\nуже существует.',
-                                    auto_close_duration=3,
+                                    auto_close_duration=1,
                                     auto_close=True, font=fontbig, button_type=5)
+                                # popup_yes(                                    f'Наименование - {str(obj_body["name"])}\n'
+                                #     f'Модель - {str(obj_body["model"])}\n'
+                                #     f'SN - {str(obj_body["part"])}\n'
+                                #     f'Производитель - {str(obj_body["vendor"])}\n'
+                                #     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
+                                #     f'\nуже существует.')
         self.importwindow.close()
 
     def set_conclusion_items_page(self, items_list):
@@ -2346,7 +2365,9 @@ class SpUi:
 
     def makeui(self):
         pages = Pages()
-        sg.theme('DarkAmber')
+        # sg.theme('DarkAmber')
+        eval(f"sg.theme('{db.db['1337']['theme']}')")
+        # print(sg.theme_list())
         pages.mainpage()
 
         while True:  # MainPage
