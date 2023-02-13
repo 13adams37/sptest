@@ -4,7 +4,6 @@ import PySimpleGUI as sg
 import pyperclip
 import db
 import MSWord
-from datetime import datetime
 from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
@@ -216,8 +215,6 @@ def real_popup_input_text_with_hints(headername, middle_text="",
                     return values['-IN-']
             except IndexError:
                 continue
-                # hintedinputwindow.close()
-                # return values['-IN-']
 
         elif event == '-IN-':
             text = values['-IN-'].lower()
@@ -421,58 +418,6 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     hintedinputwindow.close()
 
 
-# def super_predictor(index_type, index_name, text):  # later
-#     #  index_type - uniquenames, uniqueidnames, names
-#     def myFunc(e):
-#         return e[1]
-#
-#     settings_query = baza.get_by_id("1337")
-#
-#     if index_type == "unique_names":
-#         choices = baza.get_unique_index_names(f"{index_name}")
-#     elif index_type == "unique_idnames":
-#         choices = baza.get_unique_index_idnames(f"{index_name}")
-#     else:
-#         choices = baza.get_index_names(f"{index_name}")
-#
-#     choices.sort(key=myFunc)
-#
-#     prediction_list = []
-#     cnt = 0
-#     if index_type == "unique_names" or "names":  # only names
-#         if settings_query['search']:
-#             for item in choices:
-#                 if item.lower().__contains__(text):
-#                     prediction_list.append(item)
-#                     cnt += 1
-#                     if cnt == int(settings_query['max_len']):
-#                         break
-#         else:
-#             for item in choices:
-#                 if item.lower().startswith(text):
-#                     prediction_list.append(item)
-#                     cnt += 1
-#                     if cnt == int(settings_query['max_len']):
-#                         break
-#         return prediction_list
-#     else:  # id, names
-#         if settings_query['search']:
-#             for item in choices:
-#                 if item.lower().__contains__(text):
-#                     prediction_list.append(item)
-#                     cnt += 1
-#                     if cnt == int(settings_query['max_len']):
-#                         break
-#         else:
-#             for item in choices:
-#                 if item.lower().startswith(text):
-#                     prediction_list.append(item)
-#                     cnt += 1
-#                     if cnt == int(settings_query['max_len']):
-#                         break
-#         return prediction_list
-
-
 def replace_bool(input_data):
     output_data = deepcopy(input_data)
     for i in output_data:
@@ -654,7 +599,6 @@ class Pages:
         while True:
             event, values = self.settingswindow.read()
 
-
             if event == sg.WIN_CLOSED:
                 self.settingswindow.close()
                 break
@@ -783,7 +727,6 @@ class Pages:
                 list_element.update(set_to_index=sel_item)
 
             elif event == '-BOX-' and values['-BOX-']:
-                # fix
                 self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
 
     def addtspage(self, master, headername, ts_id=(None, None)):
@@ -1114,7 +1057,6 @@ class Pages:
                     if not cut_dict_by_depth(pasted_content, current_max_depth):
                         continue
 
-                # raname
                 rename_element(pasted_content)
 
                 self.resize_and_update_table(self.dict_2_list(deepcopy(pasted_content))[12])
@@ -1159,8 +1101,7 @@ class Pages:
                     if inp != event:
                         self.addtswindow[f'-CONTAINER{inp}-'].update(visible=False)
 
-            # elif event == "level" and not master == "slave":
-            elif event == "level":  # later
+            elif event == "level":
                 if values[event] == "Комплект" or values[event] == "Составная часть":
                     self.addtswindow["-ADDMORE-"].update(visible=True)
                     self.addtswindow["-TABLE-"].update(visible=True)
@@ -1440,7 +1381,6 @@ class Pages:
                         print('err  save level')
                         table1[pos] = slave.tsdata
                         self.resize_and_update_table(table1)
-                        # update
 
             elif event == "bd_delete":
                 if popup_yes_no('Вы уверены что хотите удалить?'):
@@ -2071,9 +2011,6 @@ class Pages:
                                             auto_close_duration=1,
                                             auto_close=True, font=fontbig, button_type=5)
                                         pass_state = True
-                            # else:
-                            #     pass
-
                             return True
                         else:
                             return False
@@ -2139,12 +2076,6 @@ class Pages:
                                     f'\nуже существует.',
                                     auto_close_duration=1,
                                     auto_close=True, font=fontbig, button_type=5)
-                                # popup_yes(                                    f'Наименование - {str(obj_body["name"])}\n'
-                                #     f'Модель - {str(obj_body["model"])}\n'
-                                #     f'SN - {str(obj_body["part"])}\n'
-                                #     f'Производитель - {str(obj_body["vendor"])}\n'
-                                #     f'СЗЗ - {str(obj_body["serial1"])}\n\n'
-                                #     f'\nуже существует.')
         self.importwindow.close()
 
     def set_conclusion_items_page(self, items_list):
@@ -2365,9 +2296,7 @@ class SpUi:
 
     def makeui(self):
         pages = Pages()
-        # sg.theme('DarkAmber')
         eval(f"sg.theme('{db.db['1337']['theme']}')")
-        # print(sg.theme_list())
         pages.mainpage()
 
         while True:  # MainPage
