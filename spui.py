@@ -2,6 +2,9 @@ import json
 import re
 import PySimpleGUI as sg
 import pyperclip
+from tabulate import tabulate
+import sys
+import os
 import db
 import MSWord
 from copy import deepcopy
@@ -16,6 +19,11 @@ fontbutton = ("Helvetica", 20)
 fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
+char_width_mid = sg.Text.char_width_in_pixels(fontmid)
+
+find_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+path_to_icon = os.path.abspath(os.path.join(find_dir, 'favicon.ico'))
+sg.set_global_icon(path_to_icon)
 
 baza = db.DataBase()
 tdb = db.db
@@ -64,24 +72,21 @@ def popup_yes(main_text='Заглушка'):
             popupwin.close()
             return 0
 
-        elif event.startswith("\r") or event == 'Да':
+        elif event.startswith("\r") or event == 'Ок':
             popupwin.close()
             return 1
 
 
-def popup_yes_no(main_text='Заглушка'):
-    layout = [[
-        sg.Column([
-            [sg.T("         ")],
-            [sg.T(f"{main_text}", font=fontbig)],
-        ], justification="c", element_justification="c")
-    ], [
-        sg.Column([
-            [sg.Cancel('Да', font=fontbutton, s=(15, 0)),
-             sg.Submit("Нет", font=fontbutton, s=(15, 0))],
-        ], justification="c", element_justification="c")
-    ]]
-    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True,
+def popup_yes_no_layouted(layouted):
+    layout = [
+        layouted,
+        [
+            sg.Column([
+                [sg.Cancel('Да', font=fontbutton, s=(15, 0)),
+                 sg.Submit("Нет", font=fontbutton, s=(15, 0))],
+            ], justification="c", element_justification="c")
+        ]]
+    popupwin = sg.Window('Подтверждение', layout, resizable=True, return_keyboard_events=True,
                          keep_on_top=True).Finalize()
 
     while True:
@@ -98,6 +103,77 @@ def popup_yes_no(main_text='Заглушка'):
         elif event.startswith("Escape") or event == 'Нет':
             popupwin.close()
             return 0
+
+
+def popup_yes_no(main_text='Заглушка'):
+    layout = [[
+        sg.Column([
+            [sg.T("         ")],
+            [sg.T(f"{main_text}", font=fontbig)],
+            # [sg.T(f"{main_text}", font=('Consolas', 18))],
+        ], justification="c", element_justification="c")
+    ], [
+        sg.Column([
+            [sg.Cancel('Да', font=fontbutton, s=(15, 0)),
+             sg.Submit("Нет", font=fontbutton, s=(15, 0))],
+        ], justification="c", element_justification="c")
+    ]]
+    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True,
+                         element_justification='c',
+                         keep_on_top=True).Finalize()
+
+    while True:
+        event, values = popupwin.read()
+
+        if event == sg.WIN_CLOSED:
+            popupwin.close()
+            return 0
+
+        elif event.startswith("\r") or event == 'Да':
+            popupwin.close()
+            return 1
+
+        elif event.startswith("Escape") or event == 'Нет':
+            popupwin.close()
+            return 0
+
+def popup_input_text_layout(layout_param):
+    layout = [
+        layout_param,
+        [
+        sg.Column([
+            [sg.Input(size=(25, 0), font=fontbig, k="-IN-"),
+             ],
+        ], justification="c", element_justification="c")
+    ],
+        [
+            sg.Column([
+                [sg.Button('Подтвердить', font=fontbutton, s=(15, 0)),
+                 sg.Button("Отмена", font=fontbutton, s=(15, 0))
+                 ],
+            ], justification="c", element_justification="c")
+        ]
+    ]
+    popupwin = sg.Window('Подтверждение', layout, resizable=False, return_keyboard_events=True).Finalize()
+    popupwin['-IN-'].SetFocus(True)
+    if "<Key>" not in popupwin.TKroot.bind_all():
+        popupwin.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
+    while True:
+        event, values = popupwin.read()
+
+        if event == sg.WIN_CLOSED:
+            popupwin.close()
+            return None
+
+        elif (event.startswith("\r") or event == 'Подтвердить') and values["-IN-"]:
+            popupwin.close()
+            return values["-IN-"]
+
+        elif event.startswith("Escape") or event == 'Отмена':
+            popupwin.close()
+            return None
+
 
 
 def popup_input_text(main_text='Заглушка'):
@@ -1235,15 +1311,20 @@ class Pages:
                                         main_content = db.db[item[0]]
                                         if master == True or (master == 'editor' and ts_id[1] == 0) and \
                                                 values['part'] == main_content['part']:
-                                            answer = popup_input_text(
-                                                f'Серийный номер "{values["part"]}" существует в базе!\n'
-                                                f'{main_content["name"]}\n'
-                                                f'{main_content["model"]}\n'
-                                                f'{main_content["part"]}\n'
-                                                f'{main_content["vendor"]}\n\n'
-                                                'Введите 1 для добавления ТС как нового.\n'
-                                                f"{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
-                                                'Закройте окно для отмены действия.')
+                                            dubs_layout = [
+                                                sg.Column([
+                                                    [sg.T(f'Серийный номер "{values["part"]}" существует в базе!\n', font=fontbig, justification='c')],
+                                                    [sg.T(str(tabulate([["Наименование", main_content["name"]],
+                                                                        ["Модель", main_content["model"]],
+                                                                        ["Серийный номер", main_content["part"]],
+                                                                        ["Производитель", main_content["vendor"]]],
+                                                                       numalign="center", stralign="center")),
+                                                          font=('Consolas', 20))],
+                                                    [sg.T(f"\nВведите 1 для добавления(или изменения) ТС.\n{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
+                                                f"Закройте окно для отмены действия.", font=fontbig, justification='c')]
+                                                ], justification='c', element_justification='c')
+                                            ]
+                                            answer = popup_input_text_layout(dubs_layout)
                                             if answer == '1':
                                                 # add new record
                                                 break
@@ -1255,7 +1336,7 @@ class Pages:
                                                 break
                                     else:
                                         answer = popup_yes_no(
-                                            f'Серийный номер "{values["part"]}"\nсуществует в базе (или в базе за прошлые года)\n'
+                                            f'Серийный номер "{values["part"]}"\nсуществует в базе за прошлые года (возможно в текущей базе)\n'
                                             f'Вы хотите его использовать?')
 
                                         if answer:
@@ -1955,15 +2036,19 @@ class Pages:
             elif event == '-EXPORT-' and values["-IN-"]:
                 if baza.search_if_exists("$.object", values['-IN-']):
                     objects = baza.search("$.object", values['-IN-'])
-                    path = sg.popup_get_folder('NAVI bomji', no_window=True)
-                    if path and path is not None:
-                        with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
-                            f.truncate(0)
-                            json.dump(objects, f)
-                            sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
-                                              auto_close=True, font=fontbig, button_type=5)
-                            self.importwindow.close()
-                            break
+                    selected_data = self.select_items_method(objects)
+                    if selected_data is None:
+                        continue
+                    else:
+                        path = sg.popup_get_folder('NAVI bomji', no_window=True)
+                        if path and path is not None:
+                            with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
+                                f.truncate(0)
+                                json.dump(selected_data, f)
+                                sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован.', auto_close_duration=1,
+                                                  auto_close=True, font=fontbig, button_type=5)
+                                self.importwindow.close()
+                                break
 
             elif event == '-IMPORT-':
                 file_path = sg.popup_get_file("file search", file_types=(("JSON", "*.json "),), no_window=True)
@@ -1985,14 +2070,15 @@ class Pages:
 
                     def duplicate_actions(obj_content, name):
                         full_name = "серийный номер" if name == "part" else "СЗЗ"
-                        pop_answer = popup_yes_no(
-                            f'Найден дубликат: {full_name}. \n'
-                            f'Наименование - {str(obj_content["name"])}\n'
-                            f'Модель - {str(obj_content["model"])}\n'
-                            f'SN - {str(obj_content["part"])}\n'
-                            f'Производитель - {str(obj_content["vendor"])}\n'
-                            f'СЗЗ - {str(obj_content["serial1"])}\n\n'
-                            f'Вы хотите добавить?')
+                        dub_layout = [
+                            sg.Column([
+                                [sg.T(f"Найден дубликат: {full_name}:\n", font=fontbig)],
+                                [sg.T(str(tabulate([["Наименование", obj_content["name"]], ["Модель", obj_content["model"]], ["Серийный номер", obj_content["part"]], ["Производитель", obj_content["vendor"]], ["СЗЗ1", obj_content["serial1"]]], numalign="center", stralign="center")),
+                                      font=('Consolas', 20))],
+                                [sg.T("\nВы хотите добавить его?", font=fontbig)]
+                            ], justification='c', element_justification='c')
+                        ]
+                        pop_answer = popup_yes_no_layouted(dub_layout)
                         if pop_answer:
                             if popup_yes_no(f'Хотите изменить {full_name}?'):
                                 pass_state = True
@@ -2058,25 +2144,97 @@ class Pages:
                                     else:
                                         baza.add_dict(obj_body, obj_id)
                                     sg.popup_no_frame(
-                                        f'"{str(obj_body["name"])}"\n'
-                                        f'{str(obj_body["model"])}\n'
-                                        f'{str(obj_body["part"])}\n'
-                                        f'{str(obj_body["vendor"])}\n'
-                                        f'\nимпортирован.',
+                                        f'\nИмпортировано:\n'
+                                        f'{tabulate([["Наименование", obj_body["name"]], ["Модель", obj_body["model"]], ["Серийный номер", obj_body["part"]], ["Производитель", obj_body["vendor"]], ["СЗЗ1", obj_body["serial1"]]], numalign="center", stralign="center")}',
                                         auto_close_duration=1,
-                                        auto_close=True, font=fontbig, button_type=5)
-
+                                        auto_close=True, font=('Consolas', 20), button_type=5)
                             else:
-                                sg.popup_no_frame(
-                                    f'Наименование - {str(obj_body["name"])}\n'
-                                    f'Модель - {str(obj_body["model"])}\n'
-                                    f'SN - {str(obj_body["part"])}\n'
-                                    f'Производитель - {str(obj_body["vendor"])}\n'
-                                    f'СЗЗ - {str(obj_body["serial1"])}\n\n'
-                                    f'\nуже существует.',
-                                    auto_close_duration=1,
-                                    auto_close=True, font=fontbig, button_type=5)
+                                existed_item = baza.get_by_id(obj_id)
+                                new_item = obj_body
+                                existed_list = ['Существующее', existed_item['name'], existed_item['model'],
+                                                existed_item['part'],
+                                                existed_item['vendor'], existed_item['serial1']]
+                                new_list = ['Новое', new_item['name'], new_item['model'], new_item['part'],
+                                            new_item['vendor'], new_item['serial1']]
+                                if existed_item != new_item:
+                                    lay_test = [
+                                        sg.Column([
+                                            [sg.T("Импортированное ТС отличается от ТС в базе.\n", font=fontbig)],
+                                            [sg.T(str(tabulate([existed_list, new_list], headers=['Статус', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ1'], numalign='center', stralign='center')),
+                                                  font=('Consolas', 20))],
+                                            [sg.T("\nВы хотите изменить его?", font=fontbig)]
+                                        ], justification='c', element_justification='c')
+                                    ]
+                                    existed_answer = popup_yes_no_layouted(lay_test)
+                                    if existed_answer:
+                                        baza.update_element_dict(obj_id, new_item)
+                                    continue
+                        popup_yes("Импортирование завершено.")
         self.importwindow.close()
+
+    def select_items_method(self, items_list):
+        def Text(text, size, justification, expand_x=None, key=None):
+            return sg.Text(text, size=size, pad=(1, 1), expand_x=expand_x, justification=justification, key=key)
+
+        def generate_display_layout(vals):
+            # Заполнение текста в фрейме
+            text_to_display = \
+                f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]}'
+            return [[Text(text_to_display, 95, 'l', True)]]
+
+        def generate_displayed_items(content, text_key):
+            # Отображение элементов с чекбоксами
+            item_layout = [sg.Checkbox('', font=fontbig, enable_events=True, key=f'{text_key}'),
+                           sg.Frame('', generate_display_layout(content), pad=((0, 5), (0, 5)), relief=sg.RELIEF_FLAT)]
+            return item_layout
+
+        def generate_frame(object_values, frame_key):
+            # Получает 1 Комплект, выводит информацию
+            frame_layout = [generate_displayed_items(object_values[1], f'{frame_key}')]
+            return sg.Frame(f'', frame_layout, pad=((0, 5), 0))
+
+        column_layout = [
+            [generate_frame(content, count)]
+            for count, content in enumerate(items_list)
+        ]
+
+        layout = [
+            [
+                sg.Column(
+                    [
+                        [sg.Button('Далее', k='-NEXT-', font=fontbutton, auto_size_button=True),
+                         sg.Button('Выбрать всё', k='-ALL-', font=fontbutton, auto_size_button=True)],
+                    ],
+                )
+            ],
+            [
+                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False,
+                          expand_x=True, expand_y=True, ),
+            ],
+        ]
+        window = sg.Window(f'{items_list[0][1]["object"]}', layout, margins=(10, 10), resizable=True,
+                           element_justification='c', font=fontbig, return_keyboard_events=True
+                           ).Finalize()
+        window.Maximize()
+
+        while True:
+            event, values = window.read()
+            if event in (sg.WINDOW_CLOSED, 'Exit'):
+                window.close()
+                return None
+            elif event == '-NEXT-' or event == '\r':
+                return_data = []
+                test_data = deepcopy(items_list)
+                keys_with_true_values = [key for key, value in values.items() if value == True]
+                for item in keys_with_true_values:
+                    # selected_item = test_data[int(item)][0]  # return id
+                    selected_item = test_data[int(item)]
+                    return_data.append(selected_item)
+                window.close()
+                return return_data
+            elif event == '-ALL-':
+                window.close()
+                return items_list
 
     def set_conclusion_items_page(self, items_list):
         def Text(text, size, justification, expand_x=None, key=None):
@@ -2125,9 +2283,7 @@ class Pages:
             ],
             [
                 sg.Column(column_layout, scrollable=True, vertical_scroll_only=False,
-                          expand_x=True, expand_y=True,
-
-                          ),
+                          expand_x=True, expand_y=True, ),
             ],
         ]
         window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
