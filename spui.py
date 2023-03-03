@@ -226,9 +226,6 @@ def real_popup_input_text_with_hints(headername, middle_text="",
     def myFunc(e):
         return e[1]
 
-    input_width = 80
-    num_items_to_show = 18
-
     settings_query = baza.get_by_id("1337")
 
     choices = baza.get_unique_index_names(f"{index_name}")
@@ -240,9 +237,9 @@ def real_popup_input_text_with_hints(headername, middle_text="",
                 [sg.T("         ")],
                 [sg.T(f"{middle_text}", font=fontbig)],
                 [sg.T("         ")],
-                [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
                 [sg.pin(sg.Col(
-                    [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
+                    [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
                     key='-BOX-CONTAINER-', pad=(0, 0)))]
             ], justification="c", element_justification="c")
@@ -335,9 +332,6 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     def myFunc(e):
         return e[1]
 
-    input_width = 80
-    num_items_to_show = 18
-
     settings_query = baza.get_by_id("1337")
 
     choices = baza.get_unique_index_names(f"{index_name}")
@@ -349,9 +343,9 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                 [sg.T("         ")],
                 [sg.T(f"{middle_text}", font=fontbig)],
                 [sg.T("         ")],
-                [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
                 [sg.pin(sg.Col(
-                    [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
+                    [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                  select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
                     key='-BOX-CONTAINER-', pad=(0, 0)))]
             ], justification="c", element_justification="c")
