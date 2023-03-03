@@ -7,6 +7,7 @@ import sys
 import os
 import db
 import MSWord
+import ctypes
 from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
@@ -1596,8 +1597,8 @@ class Pages:
         def myFunc(e):
             return e[1]
 
-        input_width = 80
-        num_items_to_show = 18
+        input_width = 120
+        num_items_to_show = 13 if ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100 == 1.25 else 19
 
         choices = baza.get_index_names("names")
         choices.sort(key=myFunc)
@@ -1618,7 +1619,7 @@ class Pages:
                     [sg.pin(sg.Col(
                         [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=False, font=fontbig,
-                                     horizontal_scroll=True)]],
+                                     horizontal_scroll=True, expand_y=True)]],
                         key='-BOX-CONTAINER-', pad=(0, 0)))]
                 ], justification="c", element_justification="c")
             ],
