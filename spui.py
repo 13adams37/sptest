@@ -1,13 +1,14 @@
 import json
 import re
-import PySimpleGUI as sg
-import pyperclip
-from tabulate import tabulate
-import sys
-import os
 import db
 import MSWord
-import ctypes
+import PySimpleGUI as sg
+import pyperclip
+import sys
+
+from tabulate import tabulate
+from os import path
+from ctypes import windll as winsc
 from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
@@ -21,9 +22,11 @@ fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
+listbox_width = 120
+listbox_hight = 13 if winsc.shcore.GetScaleFactorForDevice(0) / 100 == 1.25 else 19
 
-find_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-path_to_icon = os.path.abspath(os.path.join(find_dir, 'favicon.ico'))
+find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
+path_to_icon = path.abspath(path.join(find_dir, 'favicon.ico'))
 sg.set_global_icon(path_to_icon)
 
 baza = db.DataBase()
@@ -138,15 +141,16 @@ def popup_yes_no(main_text='Заглушка'):
             popupwin.close()
             return 0
 
+
 def popup_input_text_layout(layout_param):
     layout = [
         layout_param,
         [
-        sg.Column([
-            [sg.Input(size=(25, 0), font=fontbig, k="-IN-"),
-             ],
-        ], justification="c", element_justification="c")
-    ],
+            sg.Column([
+                [sg.Input(size=(25, 0), font=fontbig, k="-IN-"),
+                 ],
+            ], justification="c", element_justification="c")
+        ],
         [
             sg.Column([
                 [sg.Button('Подтвердить', font=fontbutton, s=(15, 0)),
@@ -174,7 +178,6 @@ def popup_input_text_layout(layout_param):
         elif event.startswith("Escape") or event == 'Отмена':
             popupwin.close()
             return None
-
 
 
 def popup_input_text(main_text='Заглушка'):
@@ -1314,15 +1317,18 @@ class Pages:
                                                 values['part'] == main_content['part']:
                                             dubs_layout = [
                                                 sg.Column([
-                                                    [sg.T(f'Серийный номер "{values["part"]}" существует в базе!\n', font=fontbig, justification='c')],
+                                                    [sg.T(f'Серийный номер "{values["part"]}" существует в базе!\n',
+                                                          font=fontbig, justification='c')],
                                                     [sg.T(str(tabulate([["Наименование", main_content["name"]],
                                                                         ["Модель", main_content["model"]],
                                                                         ["Серийный номер", main_content["part"]],
                                                                         ["Производитель", main_content["vendor"]]],
                                                                        numalign="center", stralign="center")),
                                                           font=('Consolas', 20))],
-                                                    [sg.T(f"\nВведите 1 для добавления(или изменения) ТС.\n{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
-                                                f"Закройте окно для отмены действия.", font=fontbig, justification='c')]
+                                                    [sg.T(
+                                                        f"\nВведите 1 для добавления(или изменения) ТС.\n{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
+                                                        f"Закройте окно для отмены действия.", font=fontbig,
+                                                        justification='c')]
                                                 ], justification='c', element_justification='c')
                                             ]
                                             answer = popup_input_text_layout(dubs_layout)
@@ -1597,9 +1603,6 @@ class Pages:
         def myFunc(e):
             return e[1]
 
-        input_width = 120
-        num_items_to_show = 13 if ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100 == 1.25 else 19
-
         choices = baza.get_index_names("names")
         choices.sort(key=myFunc)
 
@@ -1615,9 +1618,10 @@ class Pages:
                     [sg.T("         ")],
                     [sg.T("ПОИСК ТС", font=fontbig)],
                     [sg.T("         ")],
-                    [sg.Input(size=(input_width, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                    [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l",
+                              font=fontbig)],
                     [sg.pin(sg.Col(
-                        [[sg.Listbox(values=[], size=(input_width, num_items_to_show), enable_events=True, key='-BOX-',
+                        [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=False, font=fontbig,
                                      horizontal_scroll=True, expand_y=True)]],
                         key='-BOX-CONTAINER-', pad=(0, 0)))]
@@ -1834,9 +1838,10 @@ class Pages:
                     [sg.T("         ")],
                     [sg.T("Экспорт в Word", font=fontbig)],
                     [sg.T("         ")],
-                    [sg.Input(size=(30, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                    [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l",
+                              font=fontbig)],
                     [sg.pin(sg.Col(
-                        [[sg.Listbox(values=[], size=(80, 15), enable_events=True, key='-BOX-',
+                        [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
                         key='-BOX-CONTAINER-', pad=(0, 0)))]
                 ], justification="c", element_justification="c")
@@ -1955,9 +1960,10 @@ class Pages:
                     [sg.T("         ")],
                     [sg.T("Импорт и экспорт базы", font=fontbig)],
                     [sg.T("         ")],
-                    [sg.Input(size=(30, 0), enable_events=True, key='-IN-', justification="l", font=fontbig)],
+                    [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l",
+                              font=fontbig)],
                     [sg.pin(sg.Col(
-                        [[sg.Listbox(values=[], size=(80, 15), enable_events=True, key='-BOX-',
+                        [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=True, font=fontbig)]],
                         key='-BOX-CONTAINER-', pad=(0, 0)))]
                 ], justification="c", element_justification="c")
@@ -2074,7 +2080,10 @@ class Pages:
                         dub_layout = [
                             sg.Column([
                                 [sg.T(f"Найден дубликат: {full_name}:\n", font=fontbig)],
-                                [sg.T(str(tabulate([["Наименование", obj_content["name"]], ["Модель", obj_content["model"]], ["Серийный номер", obj_content["part"]], ["Производитель", obj_content["vendor"]], ["СЗЗ1", obj_content["serial1"]]], numalign="center", stralign="center")),
+                                [sg.T(str(tabulate(
+                                    [["Наименование", obj_content["name"]], ["Модель", obj_content["model"]],
+                                     ["Серийный номер", obj_content["part"]], ["Производитель", obj_content["vendor"]],
+                                     ["СЗЗ1", obj_content["serial1"]]], numalign="center", stralign="center")),
                                       font=('Consolas', 20))],
                                 [sg.T("\nВы хотите добавить его?", font=fontbig)]
                             ], justification='c', element_justification='c')
@@ -2161,7 +2170,10 @@ class Pages:
                                     lay_test = [
                                         sg.Column([
                                             [sg.T("Импортированное ТС отличается от ТС в базе.\n", font=fontbig)],
-                                            [sg.T(str(tabulate([existed_list, new_list], headers=['Статус', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ1'], numalign='center', stralign='center')),
+                                            [sg.T(str(tabulate([existed_list, new_list],
+                                                               headers=['Статус', 'Наименование', 'Модель',
+                                                                        'Серийный номер', 'Производитель', 'СЗЗ1'],
+                                                               numalign='center', stralign='center')),
                                                   font=('Consolas', 20))],
                                             [sg.T("\nВы хотите изменить его?", font=fontbig)]
                                         ], justification='c', element_justification='c')
