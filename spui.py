@@ -2055,10 +2055,10 @@ class Pages:
                 if baza.search_if_exists("$.object", values['-IN-']):
                     objects = baza.search("$.object", values['-IN-'])
                     selected_data = self.select_items_method(objects)
-                    if selected_data is None:
-                        continue
-                    else:
-                        path = sg.popup_get_folder('NAVI bomji', no_window=True)
+                    if selected_data is not None:
+                    #     continue
+                    # else:
+                        path = sg.popup_get_folder('export', no_window=True)
                         if path and path is not None:
                             with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
                                 f.truncate(0)
@@ -2254,15 +2254,18 @@ class Pages:
                 window.close()
                 return None
             elif event == '-NEXT-' or event == '\r':
+                # check empty, empty is []
                 return_data = []
                 test_data = deepcopy(items_list)
-                keys_with_true_values = [key for key, value in values.items() if value == True]
+                keys_with_true_values = [key for key, value in values.items() if value is True]
                 for item in keys_with_true_values:
-                    # selected_item = test_data[int(item)][0]  # return id
                     selected_item = test_data[int(item)]
                     return_data.append(selected_item)
-                window.close()
-                return return_data
+                if not return_data:
+                    popup_yes("Ничего не выбрано.")
+                else:
+                    window.close()
+                    return return_data
             elif event == '-ALL-':
                 window.close()
                 return items_list
