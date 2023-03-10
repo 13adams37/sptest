@@ -5,10 +5,10 @@ import MSWord
 import PySimpleGUI as sg
 import pyperclip
 import sys
+import ctypes
 
 from tabulate import tabulate
 from os import path
-from ctypes import windll as winsc
 from copy import deepcopy
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
@@ -23,7 +23,7 @@ fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
 listbox_width = 120
-listbox_hight = 13 if winsc.shcore.GetScaleFactorForDevice(0) / 100 == 1.25 else 19
+listbox_hight = int((((ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100) * 26) / 2) - 3)
 
 find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
 path_to_icon = path.abspath(path.join(find_dir, 'favicon.ico'))
@@ -31,6 +31,23 @@ sg.set_global_icon(path_to_icon)
 
 baza = db.DataBase()
 tdb = db.db
+
+
+# def get_maximum_listbox_hight():
+#     window_scale = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100  # 1.0
+#     window_height = ctypes.windll.user32.GetSystemMetrics(1)  # 1080
+#     # 1.0 x 1080 = 19
+#     # 1.25 x 1080 = 13
+#     # 1.5 x  1080 = 7???
+#     # 19-(24*0.5)
+#
+#     multiply = 1
+#     if window_height == 1080:
+#         multiply = 1
+#     elif window_height == 1440:
+#         multiply = 1.25
+#     elif window_height == 720:
+#         multiply = 0.75
 
 
 def _onKeyRelease(event):
@@ -739,7 +756,7 @@ class Pages:
                 self.credentialswindow.close()
                 return 0
 
-            elif event == "Дальше" and values["-OBJECT-"]:
+            elif event == "Далее" and values["-OBJECT-"]:
                 self.object = values["-OBJECT-"]
                 self.credentialswindow['-OBJECT-'].update('')
                 self.credentialswindow.close()
@@ -1618,7 +1635,7 @@ class Pages:
                         [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=False, font=fontbig,
                                      horizontal_scroll=True, expand_y=True)]],
-                        key='-BOX-CONTAINER-', pad=(0, 0)))]
+                        key='-BOX-CONTAINER-', pad=(0, 0)))],
                 ], justification="c", element_justification="c")
             ],
             [
@@ -2155,12 +2172,17 @@ class Pages:
                             else:
                                 existed_item = baza.get_by_id(obj_id)
                                 new_item = obj_body
+                                new_item_cutted = new_item
+
+                                del existed_item['object']
+                                del new_item_cutted['object']
+
                                 existed_list = ['Существующее', existed_item['name'], existed_item['model'],
                                                 existed_item['part'],
                                                 existed_item['vendor'], existed_item['serial1']]
                                 new_list = ['Новое', new_item['name'], new_item['model'], new_item['part'],
                                             new_item['vendor'], new_item['serial1']]
-                                if existed_item != new_item:
+                                if existed_item != new_item_cutted:
                                     lay_test = [
                                         sg.Column([
                                             [sg.T("Импортированное ТС отличается от ТС в базе.\n", font=fontbig)],
@@ -2174,8 +2196,10 @@ class Pages:
                                     ]
                                     existed_answer = popup_yes_no_layouted(lay_test)
                                     if existed_answer:
-                                        baza.update_element_dict(obj_id, new_item)
-                                    continue
+                                        if values["-IN-"]:
+                                            baza.update_element_dict(change_obj(new_item, values["-IN-"]), obj_id)
+                                        else:
+                                            baza.update_element_dict(new_item, obj_id)
                         popup_yes("Импортирование завершено.")
         self.importwindow.close()
 
