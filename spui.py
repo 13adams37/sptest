@@ -241,7 +241,7 @@ def popup_input_text(main_text='Заглушка'):
 def real_popup_input_text_with_hints(headername, middle_text="",
                                      index_name='objects'):
     def myFunc(e):
-        return e[1]
+        return e[0]
 
     settings_query = baza.get_by_id("1337")
 
@@ -347,7 +347,7 @@ def real_popup_input_text_with_hints(headername, middle_text="",
 def popup_input_text_with_hints(headername, middle_text="Удаление и изменение",
                                 index_name='objects'):  # delete and edit page
     def myFunc(e):
-        return e[1]
+        return e[0]
 
     settings_query = baza.get_by_id("1337")
 
@@ -1612,7 +1612,7 @@ class Pages:
 
     def edit_ts_page(self, headername):
         def myFunc(e):
-            return e[1]
+            return e[0]
 
         choices = baza.get_index_names("names")
         choices.sort(key=myFunc)
