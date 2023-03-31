@@ -22,6 +22,7 @@ fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
+
 listbox_width = 120
 listbox_hight = int((((ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100) * 26) / 2) - 3)
 
@@ -29,7 +30,8 @@ find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
 path_to_icon = path.abspath(path.join(find_dir, 'favicon.ico'))
 sg.set_global_icon(path_to_icon)
 
-baza = db.DataBase()
+baza = db.DataBase(db_name=db.db)
+settings_db = db.DataBase(db_name=db.settings_db)
 tdb = db.db
 
 
@@ -243,7 +245,7 @@ def real_popup_input_text_with_hints(headername, middle_text="",
     def myFunc(e):
         return e[0]
 
-    settings_query = baza.get_by_id("1337")
+    settings_query = settings_db.get_by_id("1337")
 
     choices = baza.get_unique_index_names(f"{index_name}")
     choices.sort(key=myFunc)
@@ -349,7 +351,7 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     def myFunc(e):
         return e[0]
 
-    settings_query = baza.get_by_id("1337")
+    settings_query = settings_db.get_by_id("1337")
 
     choices = baza.get_unique_index_names(f"{index_name}")
     choices.sort(key=myFunc)
@@ -571,7 +573,7 @@ class Pages:
         self.input_text, self.last_event = '', ''
 
         # settings
-        settings_query = baza.get_by_id("1337")
+        settings_query = settings_db.get_by_id("1337")
         self.search_type = settings_query['search']
         self.hints_type = settings_query['hints']
         self.savestates = settings_query['savestates']
@@ -643,7 +645,7 @@ class Pages:
         self.window = sg.Window('Главное меню', mainpage, resizable=True).Finalize()
 
     def settingspage(self):
-        temp_settings_query = baza.get_by_id("1337")
+        temp_settings_query = settings_db.get_by_id("1337")
         settingslayout = [
             [
                 sg.Text('Поиск: ', font=fontbig),
@@ -697,13 +699,13 @@ class Pages:
             elif event == "-CLOSE-" or event.startswith('Escape'):
                 text = values['max_len']
                 if text == '':
-                    self.settingswindow['max_len'].Update(baza.get_by_id(1337)['max_len'])
+                    self.settingswindow['max_len'].Update(settings_db.get_by_id(1337)['max_len'])
                     continue
                 else:
                     try:
                         value = int(text)
                     except ValueError:  # oops
-                        self.settingswindow['max_len'].Update(baza.get_by_id(1337)['max_len'])
+                        self.settingswindow['max_len'].Update(settings_db.get_by_id(1337)['max_len'])
                         continue
 
                 temp_settings = {'search': True if values['search'] == 'По содержанию' else False,
@@ -713,7 +715,7 @@ class Pages:
                                  'max_len': values['max_len'],
                                  'theme': values['theme']}
 
-                baza.update_element_dict('1337', temp_settings)
+                settings_db.update_element_dict('1337', temp_settings)
                 self.hints_type = temp_settings['hints']
                 self.jump_type = temp_settings['jump']
                 self.search_type = temp_settings['search']
@@ -2056,8 +2058,8 @@ class Pages:
                     objects = baza.search("$.object", values['-IN-'])
                     selected_data = self.select_items_method(objects)
                     if selected_data is not None:
-                    #     continue
-                    # else:
+                        #     continue
+                        # else:
                         path = sg.popup_get_folder('export', no_window=True)
                         if path and path is not None:
                             with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
@@ -2095,7 +2097,7 @@ class Pages:
                                     [["Наименование", obj_content["name"]], ["Модель", obj_content["model"]],
                                      ["Серийный номер", obj_content["part"]], ["Производитель", obj_content["vendor"]],
                                      ["СЗЗ1", obj_content["serial1"]]], numalign="center", stralign="center")),
-                                      font=('Consolas', 20))],
+                                    font=('Consolas', 20))],
                                 [sg.T("\nВы хотите добавить его?", font=fontbig)]
                             ], justification='c', element_justification='c')
                         ]
@@ -2486,7 +2488,7 @@ class SpUi:
 
     def makeui(self):
         pages = Pages()
-        eval(f"sg.theme('{db.db['1337']['theme']}')")
+        eval(f"sg.theme('{db.settings_db['1337']['theme']}')")
         pages.mainpage()
 
         while True:  # MainPage

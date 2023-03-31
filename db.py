@@ -14,79 +14,89 @@ try:
 except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
 
+try:
+    settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=True)
+    with settings_db:
+        settings_db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0",
+                'theme': 'DarkAmber', "input_rows": "0"}, "1337")
+except OSError:
+    settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=False)
+
 keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
 
 
 class DataBase:
+    def __init__(self, db_name):
+        self.dbname = db_name
 
     def add(self, what):
-        with db:
-            db.add(self.all_trim_json(self.makejson(what)))
+        with self.dbname:
+            self.dbname.add(self.all_trim_json(self.makejson(what)))
 
     def add_dict(self, what, doc_id=None):
-        with db:
-            db.add(self.all_trim_json(what), doc_id)
+        with self.dbname:
+            self.dbname.add(self.all_trim_json(what), doc_id)
 
     def search(self, jquery, name):
-        with db:
-            return db.search(jquery, name)
+        with self.dbname:
+            return self.dbname.search(jquery, name)
 
     def search_if_exists(self, jquery, name):
-        if db.search(jquery, name):
+        if self.dbname.search(jquery, name):
             return True
         else:
             return False
 
     def search_by_id_if_exists(self, docid):
-        if db.get(docid) is not None:
+        if self.dbname.get(docid) is not None:
             return True
         else:
             return False
 
     def get_index_names_fromthisdb(self, index):
         items = []
-        with db:
-            for item in db.get_index_values(index):
+        with self.dbname:
+            for item in self.dbname.get_index_values(index):
                 if item[0] != '444' and item[1]:
                     items.append(item)
         return items
 
     def get_index_names(self, index):
         items = []
-        with db:
-            for item in db.get_index_values(index):
+        with self.dbname:
+            for item in self.dbname.get_index_values(index):
                 items.append(item)
         return items
 
     def get_unique_index_idnames(self, index):
         items = []
         ids = []
-        for item in db.get_index_values(index):
+        for item in self.dbname.get_index_values(index):
             items.append(item[1])
             ids.append(item[0])
         return items, ids
 
     def get_unique_index_names(self, index):
         items = []
-        for item in db.get_index_values(index):
+        for item in self.dbname.get_index_values(index):
             items.append(item[1])
         return list(set(items))
 
     def get_by_id(self, itemid):
-        return db.get(itemid)
+        return self.dbname.get(itemid)
 
     def update_element(self, docid, doc):
-        with db:
-            db.update(docid, self.makejson(doc))
+        with self.dbname:
+            self.dbname.update(docid, self.makejson(doc))
 
     def update_element_dict(self, docid, doc):
-        with db:
-            db.update(docid, doc)
+        with self.dbname:
+            self.dbname.update(docid, doc)
 
     def delete_by_id(self, docid):
-        with db:
-            db.delete(docid)
+        with self.dbname:
+            self.dbname.delete(docid)
 
     def base_trim_string(self, what):
         what['name'] = " ".join(what['name'].split())
