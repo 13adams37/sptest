@@ -1618,6 +1618,7 @@ class Pages:
             [
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
+                sg.Button('Объекты', key="-SHOWALL-", font=fontbutton),
                 sg.Button('Дополнительно', key="-EXTRAS-", font=fontbutton),
                 sg.Button("Открыть", key="-OPEN-", font=fontbutton),
             ]
@@ -1771,6 +1772,12 @@ class Pages:
                     input_text = text
 
                 make_prediction(text, get_active_radio(values))
+
+            elif event == '-SHOWALL-':
+                output_string = ""
+                for elem in sorted(baza.get_unique_index_names('objects')):
+                    output_string += f"{elem}\n"
+                sg.popup_scrolled(output_string, font=fontbig, title='Все объекты', no_sizegrip=True)
 
             elif event == '-BOX-' and values['-BOX-']:
                 curs_pos = list_element.TKListbox.curselection()[0]
