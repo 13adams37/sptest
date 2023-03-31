@@ -5,11 +5,11 @@ import MSWord
 import PySimpleGUI as sg
 import pyperclip
 import sys
-import ctypes
 
 from tabulate import tabulate
 from os import path
 from copy import deepcopy
+
 
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
@@ -23,9 +23,6 @@ fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
 
-listbox_width = 120
-listbox_hight = int((((ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100) * 26) / 2) - 3)
-
 find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
 path_to_icon = path.abspath(path.join(find_dir, 'favicon.ico'))
 sg.set_global_icon(path_to_icon)
@@ -34,22 +31,8 @@ baza = db.DataBase(db_name=db.db)
 settings_db = db.DataBase(db_name=db.settings_db)
 tdb = db.db
 
-
-# def get_maximum_listbox_hight():
-#     window_scale = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100  # 1.0
-#     window_height = ctypes.windll.user32.GetSystemMetrics(1)  # 1080
-#     # 1.0 x 1080 = 19
-#     # 1.25 x 1080 = 13
-#     # 1.5 x  1080 = 7???
-#     # 19-(24*0.5)
-#
-#     multiply = 1
-#     if window_height == 1080:
-#         multiply = 1
-#     elif window_height == 1440:
-#         multiply = 1.25
-#     elif window_height == 720:
-#         multiply = 0.75
+listbox_width = 120
+listbox_hight = settings_db.get_by_id("1337")["input_rows"]
 
 
 def _onKeyRelease(event):
@@ -66,7 +49,6 @@ def _onKeyRelease(event):
     if event.keycode == 65 and ctrl and event.keysym.lower() != "a":
         event.widget.event_generate("<<SelectAll>>")
 
-    # if event.keycode == 83 and ctrl and event.keysym.lower() != "s":
     if event.keycode == 83 and ctrl:  # ctrl + s, save
         event.widget.event_generate("<<MySave>>")
 
@@ -242,13 +224,8 @@ def popup_input_text(main_text='Заглушка'):
 
 def real_popup_input_text_with_hints(headername, middle_text="",
                                      index_name='objects'):
-    def myFunc(e):
-        return e[0]
-
     settings_query = settings_db.get_by_id("1337")
-
-    choices = baza.get_unique_index_names(f"{index_name}")
-    choices.sort(key=myFunc)
+    choices = sorted(baza.get_unique_index_names(f"{index_name}"))
 
     hintedinputlayout = [
         [
@@ -348,13 +325,8 @@ def real_popup_input_text_with_hints(headername, middle_text="",
 
 def popup_input_text_with_hints(headername, middle_text="Удаление и изменение",
                                 index_name='objects'):  # delete and edit page
-    def myFunc(e):
-        return e[0]
-
     settings_query = settings_db.get_by_id("1337")
-
-    choices = baza.get_unique_index_names(f"{index_name}")
-    choices.sort(key=myFunc)
+    choices = sorted(baza.get_unique_index_names(f"{index_name}"))
 
     hintedinputlayout = [
         [
@@ -395,8 +367,7 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                     for item in baza.search('$.object', f'{values["-IN-"]}'):
                         baza.delete_by_id(item[0])
 
-                    choices = baza.get_unique_index_names(f"{index_name}")
-                    choices.sort(key=myFunc)
+                    choices = sorted(baza.get_unique_index_names(f"{index_name}"))
                     prediction_list.clear()
                     cnt = 0
                     text = values['-IN-'].lower()
@@ -434,8 +405,7 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
                                         item2['object'] = popup_text
                         baza.update_element_dict(item[0], obj)
 
-                    choices = baza.get_unique_index_names(f"{index_name}")
-                    choices.sort(key=myFunc)
+                    choices = sorted(baza.get_unique_index_names(f"{index_name}"))
                     prediction_list.clear()
                     cnt = 0
                     text = popup_text
@@ -646,6 +616,7 @@ class Pages:
 
     def settingspage(self):
         temp_settings_query = settings_db.get_by_id("1337")
+        global listbox_hight
         settingslayout = [
             [
                 sg.Text('Поиск: ', font=fontbig),
@@ -681,6 +652,10 @@ class Pages:
                             font=fontmid, key='theme', readonly=True, enable_events=True)
             ],
             [
+                sg.Text('Количество строк в поле подсказок (масштабирование под разрешение экрана)', font=fontbig),
+                sg.InputText(default_text=int(temp_settings_query['input_rows']), font=fontmid, key='input_rows', s=(8, 0))
+            ],
+            [
                 sg.Text('Назад', key="-CLOSE-", enable_events=True, justification="l", expand_x=True,
                         font=fontbutton)
             ]
@@ -697,23 +672,25 @@ class Pages:
                 break
 
             elif event == "-CLOSE-" or event.startswith('Escape'):
-                text = values['max_len']
-                if text == '':
-                    self.settingswindow['max_len'].Update(settings_db.get_by_id(1337)['max_len'])
-                    continue
-                else:
-                    try:
-                        value = int(text)
-                    except ValueError:  # oops
-                        self.settingswindow['max_len'].Update(settings_db.get_by_id(1337)['max_len'])
+                text = [values['max_len'], values['input_rows']]
+                for var in text:
+                    if var == '':
+                        self.settingswindow['var'].Update(settings_db.get_by_id(1337)['var'])
                         continue
+                    else:
+                        try:
+                            value = int(var)
+                        except ValueError:  # oops
+                            self.settingswindow['var'].Update(settings_db.get_by_id(1337)['var'])
+                            continue
 
                 temp_settings = {'search': True if values['search'] == 'По содержанию' else False,
                                  'hints': True if values['hints'] == 'Вкл' else False,
                                  'savestates': True if values['savestates'] == 'Вкл' else False,
                                  'jump': True if values['jump'] == 'Вкл' else False,
                                  'max_len': values['max_len'],
-                                 'theme': values['theme']}
+                                 'theme': values['theme'],
+                                 'input_rows': values['input_rows']}
 
                 settings_db.update_element_dict('1337', temp_settings)
                 self.hints_type = temp_settings['hints']
@@ -722,6 +699,7 @@ class Pages:
                 self.savestates = temp_settings['savestates']
                 self.prediction_len = int(temp_settings['max_len'])
                 self.theme = temp_settings['theme']
+                listbox_hight = int(temp_settings['input_rows'])
                 self.settingswindow.close()
                 break
 
@@ -1614,10 +1592,7 @@ class Pages:
 
     def edit_ts_page(self, headername):
         def myFunc(e):
-            return e[0]
-
-        choices = baza.get_index_names("names")
-        choices.sort(key=myFunc)
+            return e[1]
 
         editlayout = [
             [
@@ -1679,7 +1654,7 @@ class Pages:
 
             if text:
                 cnt = 0  # counter
-                index_values = db.db.get_index_values(index)
+                index_values = sorted(list(db.db.get_index_values(index)), key=myFunc)
                 if self.search_type:
                     for content in index_values:
                         if content[1].lower().__contains__(text) and content[0] != prev_id and content[0] != '444':
@@ -1764,10 +1739,6 @@ class Pages:
                     item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
                     open_editwindow(item_id)
                     radio = get_active_radio(values)
-
-                    choices = baza.get_index_names(radio)
-                    choices.sort(key=myFunc)
-
                     make_prediction(values['-IN-'].lower(), radio)
 
             elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
@@ -1790,10 +1761,6 @@ class Pages:
                     item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
                     open_editwindow(item_id)
                     radio = get_active_radio(values)
-
-                    choices = baza.get_index_names(radio)
-                    choices.sort(key=myFunc)
-
                     make_prediction(values['-IN-'].lower(), radio)
 
             elif event == '-IN-':
@@ -1810,18 +1777,10 @@ class Pages:
                 item_id = prediction_ids[curs_pos]
                 open_editwindow(item_id)
                 radio = get_active_radio(values)
-
-                choices = baza.get_index_names(radio)
-                choices.sort(key=myFunc)
-
                 make_prediction(values['-IN-'].lower(), radio)
-
                 list_element.update(set_to_index=curs_pos, scroll_to_index=curs_pos)
 
             elif event in radid:
-                choices = baza.get_index_names(event)
-                choices.sort(key=myFunc)
-
                 self.edittswidow['-IN-'].update("")
                 prediction_list, item_id = [], ""
                 list_element.update(values=prediction_list)
@@ -1835,10 +1794,6 @@ class Pages:
                 list_element.update(values=prediction_list)
                 sel_item = 0
                 radio = get_active_radio(values)
-
-                choices = baza.get_index_names(radio)
-                choices.sort(key=myFunc)
-
                 make_prediction(values['-IN-'].lower(), radio)
 
         self.edittswidow.close()

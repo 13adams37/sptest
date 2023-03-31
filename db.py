@@ -9,8 +9,6 @@ try:
         db.create_index("parts", "$..part")
         db.create_index("vendors", "$..vendor")
         db.create_index("serials", "$..serial1")
-        db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0",
-                'theme': 'DarkAmber'}, "1337")
 except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
 
@@ -18,7 +16,7 @@ try:
     settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=True)
     with settings_db:
         settings_db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0",
-                'theme': 'DarkAmber', "input_rows": "0"}, "1337")
+                         'theme': 'DarkAmber', "input_rows": "16"}, "1337")
 except OSError:
     settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=False)
 
