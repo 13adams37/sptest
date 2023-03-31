@@ -705,7 +705,7 @@ class Pages:
 
     @property
     def credentialspage(self):
-        choices = baza.get_unique_index_names("objects")
+        choices = sorted(baza.get_unique_index_names("objects"))
 
         credentialslayout = [
             [sg.Text('Объект', font=fontbig)],
@@ -1506,10 +1506,10 @@ class Pages:
 
     def get_choices(self):
         if self.hints_type:
-            self.choices_name = baza.get_unique_index_names('names')
-            self.choices_part = baza.get_unique_index_names('parts')
-            self.choices_model = baza.get_unique_index_names('models')
-            self.choices_vendor = baza.get_unique_index_names('vendors')
+            self.choices_name = sorted(baza.get_unique_index_names('names'))
+            self.choices_part = sorted(baza.get_unique_index_names('parts'))
+            self.choices_model = sorted(baza.get_unique_index_names('models'))
+            self.choices_vendor = sorted(baza.get_unique_index_names('vendors'))
 
     def resize_and_update_table(self, data):
         table = self.addtswindow['-TABLE-']
@@ -1837,7 +1837,7 @@ class Pages:
             self.exportwordwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
         prediction_list, input_text, sel_item = [], "", 0
-        choices = baza.get_unique_index_names('objects')
+        choices = sorted(baza.get_unique_index_names('objects'))
 
         while True:
             event, values = self.exportwordwindow.read()
@@ -1960,7 +1960,7 @@ class Pages:
         list_element: sg.Listbox = self.importwindow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
         prediction_list, input_text, sel_item = [], "", 0
-        choices = baza.get_unique_index_names('objects')
+        choices = sorted(baza.get_unique_index_names('objects'))
 
         while True:
             event, values = self.importwindow.read()
