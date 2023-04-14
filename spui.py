@@ -1905,8 +1905,18 @@ class Pages:
                     return items
 
                 if baza.search_if_exists("$.object", values['-IN-']):
-                    objects = make_listed_items(baza.search("$.object", values['-IN-']))
-                    conclusion_data = self.set_conclusion_items_page(objects)
+                    objects = make_listed_items(self.select_items_method(baza.search("$.object", values['-IN-'])))
+                    level_status = False
+
+                    for item_in_list in objects:
+                        if item_in_list['table']:
+                            level_status = True
+
+                    if level_status:
+                        conclusion_data = self.set_conclusion_items_page(objects)
+                    else:
+                        conclusion_data = objects
+
                     if conclusion_data is None:
                         continue
                     try:
