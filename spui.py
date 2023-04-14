@@ -2322,9 +2322,6 @@ class Pages:
                 return test_data
 
     def set_items_sequence_page(self, headername, object_name):
-        input_width = 80
-        num_items_to_show = 18
-
         def get_displyed(vals):
             if vals is not None:
                 output = [vals['object'], vals['name'], vals['model'], vals['part'], vals['vendor'],
@@ -2396,7 +2393,7 @@ class Pages:
                     [sg.T("Изменение последовательности", font=fontbig)],
                     [sg.T("         ")],
                     [sg.pin(sg.Col(
-                        [[sg.Listbox(values=test_vals, size=(input_width, num_items_to_show), enable_events=True,
+                        [[sg.Listbox(values=test_vals, size=(listbox_width, listbox_hight), enable_events=True,
                                      key='-BOX-',
                                      select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED, no_scrollbar=False, font=fontbig,
                                      horizontal_scroll=True)]],
