@@ -1919,11 +1919,14 @@ class Pages:
 
                     if conclusion_data is None:
                         continue
+
+                    export_path = sg.popup_get_folder('export', no_window=True)
+
                     try:
-                        mswordlib.act_table(objects, f"{values['-IN-']} АКТ")
-                        mswordlib.conclusion_table(conclusion_data, f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
-                        mswordlib.methods_table(objects, f"{values['-IN-']} МЕТОДЫ")
-                        mswordlib.ims_table(objects, f"{values['-IN-']} СПИСОК ИМС")
+                        mswordlib.act_table(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")
+                        mswordlib.conclusion_table(conclusion_data, f"{export_path}"'/'f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
+                        mswordlib.methods_table(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")
+                        mswordlib.ims_table(objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")
                         sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
 
