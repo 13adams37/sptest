@@ -1910,10 +1910,10 @@ class Pages:
                     if conclusion_data is None:
                         continue
                     try:
-                        mswordlib.act_table(objects, f"АКТ {values['-IN-']}")
-                        mswordlib.conclusion_table(conclusion_data, f"ЗАКЛЮЧЕНИЕ {values['-IN-']}")
-                        mswordlib.methods_table(objects, f"МЕТОДЫ {values['-IN-']}")
-                        mswordlib.ims_table(objects, f"СПИСОК ИМС {values['-IN-']}")
+                        mswordlib.act_table(objects, f"{values['-IN-']} АКТ")
+                        mswordlib.conclusion_table(conclusion_data, f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
+                        mswordlib.methods_table(objects, f"{values['-IN-']} МЕТОДЫ")
+                        mswordlib.ims_table(objects, f"{values['-IN-']} СПИСОК ИМС")
                         sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
 
