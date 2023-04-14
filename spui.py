@@ -1895,22 +1895,24 @@ class Pages:
             elif event == '-OPEN-' and values["-IN-"]:
                 def make_listed_items(elements):
                     items = []
-                    for element in elements:
-                        item = element[1]
-                        if type(item) == dict:
-                            items.append(item)
-                        else:
-                            items.append(elements)
-                            break
-                    return items
+                    if elements:
+                        for element in elements:
+                            item = element[1]
+                            if type(item) == dict:
+                                items.append(item)
+                            else:
+                                items.append(elements)
+                                break
+                        return items
 
                 if baza.search_if_exists("$.object", values['-IN-']):
                     objects = make_listed_items(self.select_items_method(baza.search("$.object", values['-IN-'])))
                     level_status = False
 
-                    for item_in_list in objects:
-                        if item_in_list['table']:
-                            level_status = True
+                    if objects:
+                        for item_in_list in objects:
+                            if item_in_list['table']:
+                                level_status = True
 
                     if level_status:
                         conclusion_data = self.set_conclusion_items_page(objects)
