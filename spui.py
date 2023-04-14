@@ -913,6 +913,7 @@ class Pages:
         displaycolumns.remove('Объект')
         table.ColumnsToDisplay = displaycolumns
         table_widget.configure(displaycolumns=displaycolumns)
+        list_element: sg.Listbox = self.addtswindow.Element(f'-BOXname-')
 
         table.expand(expand_x=True, expand_y=True)
         for cid in headings:
@@ -961,10 +962,8 @@ class Pages:
         def make_predictions(index, container):
             choices = eval(f"self.choices_{index}")
             text = values[index].lower()
-            if text == self.input_text:
-                pass
-            else:
-                self.input_text = text
+
+            if text:
                 self.predictions_list = []
                 if text:
                     cnt = 0
@@ -990,6 +989,7 @@ class Pages:
                 list_element.update(values=self.predictions_list)
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
+                print(len(self.predictions_list))
 
                 if len(self.predictions_list) > 0:
                     self.addtswindow[container].update(visible=True)
@@ -1169,7 +1169,7 @@ class Pages:
                 list_element: sg.Listbox = self.addtswindow.Element(f'-BOX{event}-')
                 make_predictions(event, f'-CONTAINER{event}-')
                 for inp in ['name', 'model', 'part', 'vendor']:
-                    if inp != event:
+                    if inp != event or values[event] == "":
                         self.addtswindow[f'-CONTAINER{inp}-'].update(visible=False)
 
             elif event == "level":
