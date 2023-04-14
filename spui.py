@@ -1897,9 +1897,8 @@ class Pages:
                     items = []
                     if elements:
                         for element in elements:
-                            item = element[1]
-                            if type(item) == dict:
-                                items.append(item)
+                            if type(element[1]) == dict:
+                                items.append(element[1])
                             else:
                                 items.append(elements)
                                 break
@@ -1913,6 +1912,7 @@ class Pages:
                         for item_in_list in objects:
                             if item_in_list['table']:
                                 level_status = True
+                                break
 
                     if level_status:
                         conclusion_data = self.set_conclusion_items_page(objects)
