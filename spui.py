@@ -992,8 +992,10 @@ class Pages:
         def make_predictions(index, container):
             choices = eval(f"self.choices_{index}")
             text = values[index].lower()
-
-            if text:
+            if text == self.input_text:
+                pass
+            else:
+                self.input_text = text
                 self.predictions_list = []
                 if text:
                     cnt = 0
@@ -1011,7 +1013,6 @@ class Pages:
                                 cnt += 1
                                 if cnt == self.prediction_len:
                                     break
-
                 if len(self.predictions_list) == 1:
                     if text == self.predictions_list[0].lower():
                         self.predictions_list = []
@@ -1172,6 +1173,7 @@ class Pages:
                         self.addtswindow[self.last_event].update(value=values[f'-BOX{self.last_event}-'][0])
                         self.addtswindow[f'-CONTAINER{self.last_event}-'].update(visible=False)
                         self.addtswindow[f'-BOX{self.last_event}-'].update('')
+                        self.input_text = values[f'-BOX{self.last_event}-'][0].lower()
                         continue
 
                 if self.jump_type:
