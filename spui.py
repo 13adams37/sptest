@@ -550,6 +550,7 @@ class Pages:
         self.jump_type = settings_query['jump']
         self.prediction_len = int(settings_query['max_len'])
         self.theme = settings_query['theme']
+        self.author = settings_query['author']
 
     def mainpage(self):
         mainpage = [
@@ -643,7 +644,8 @@ class Pages:
             ],
             [
                 sg.Text('Максимальное количество вывода элементов (0 - все) ', font=fontbig),
-                sg.InputText(default_text=int(temp_settings_query['max_len']), font=fontmid, key='max_len', s=(8, 0))
+                sg.InputText(default_text=int(temp_settings_query['max_len']), font=fontmid, key='max_len', s=(4, 0)
+                             , justification='c')
             ],
             [
                 sg.Text('Выбор темы (применение после перезагрузки)', font=fontbig),
@@ -652,8 +654,14 @@ class Pages:
                             font=fontmid, key='theme', readonly=True, enable_events=True)
             ],
             [
-                sg.Text('Количество строк в поле подсказок (масштабирование под разрешение экрана)', font=fontbig),
-                sg.InputText(default_text=int(temp_settings_query['input_rows']), font=fontmid, key='input_rows', s=(8, 0))
+                sg.Text('Количество строк в списках (масштабирование под разрешение экрана)', font=fontbig),
+                sg.InputText(default_text=int(temp_settings_query['input_rows']), font=fontmid, key='input_rows',
+                             s=(4, 0), justification='c')
+            ],
+            [
+                sg.Text('Автор', font=fontbig),
+                sg.InputText(default_text=temp_settings_query['author'], font=fontmid, key='author',
+                             s=(40, 0), justification='c')
             ],
             [
                 sg.Text('Назад', key="-CLOSE-", enable_events=True, justification="l", expand_x=True,
@@ -664,6 +672,9 @@ class Pages:
                                         element_justification="c").Finalize()
         self.settingswindow['search'].SetFocus(True)
 
+        if "<Key>" not in self.settingswindow.TKroot.bind_all():
+            self.settingswindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+
         while True:
             event, values = self.settingswindow.read()
 
@@ -672,17 +683,24 @@ class Pages:
                 break
 
             elif event == "-CLOSE-" or event.startswith('Escape'):
-                text = [values['max_len'], values['input_rows']]
-                for var in text:
-                    if var == '':
-                        self.settingswindow['var'].Update(settings_db.get_by_id(1337)['var'])
-                        continue
-                    else:
-                        try:
-                            value = int(var)
-                        except ValueError:  # oops
-                            self.settingswindow['var'].Update(settings_db.get_by_id(1337)['var'])
-                            continue
+                try:
+                    int(values['max_len'])
+                except ValueError:
+                    self.settingswindow['max_len'].Update(temp_settings_query['max_len'])
+                    popup_yes('Поле "Максимальное количество вывода элементов" принимает только численные значения!')
+                    continue
+
+                try:
+                    int(values['input_rows'])
+                except ValueError:
+                    self.settingswindow['input_rows'].Update(temp_settings_query['input_rows'])
+                    popup_yes('Поле "Количество строк в списках" принимает только численные значения!')
+                    continue
+
+                if values['author'] == "":
+                    self.settingswindow['author'].Update(temp_settings_query['author'])
+                    popup_yes('Поле "Автор" не должно быть пустым!')
+                    continue
 
                 temp_settings = {'search': True if values['search'] == 'По содержанию' else False,
                                  'hints': True if values['hints'] == 'Вкл' else False,
@@ -690,7 +708,8 @@ class Pages:
                                  'jump': True if values['jump'] == 'Вкл' else False,
                                  'max_len': values['max_len'],
                                  'theme': values['theme'],
-                                 'input_rows': values['input_rows']}
+                                 'input_rows': values['input_rows'],
+                                 'author': values['author']}
 
                 settings_db.update_element_dict('1337', temp_settings)
                 self.hints_type = temp_settings['hints']
@@ -699,8 +718,10 @@ class Pages:
                 self.savestates = temp_settings['savestates']
                 self.prediction_len = int(temp_settings['max_len'])
                 self.theme = temp_settings['theme']
+                self.author = temp_settings['author']
                 listbox_hight = int(temp_settings['input_rows'])
                 self.settingswindow.close()
+                del temp_settings
                 break
 
     @property
@@ -811,8 +832,10 @@ class Pages:
             [sg.Column(
                 [[sg.Text('Объект', font=fontmid), sg.InputText(key='object', default_text=self.object, disabled=True,
                                                                 s=(int(len(self.object) * 1.2), 5), text_color="black",
-                                                                font=fontmidlow, justification='c')]]
-                , justification="c"
+                                                                font=fontmidlow, justification='c'),
+                  sg.InputText(key='author', default_text=self.author, disabled=True, visible=False,
+                               s=(int(len(self.author) * 1.2), 5), text_color="black",font=fontmidlow,
+                               justification='c')]], justification="c"
             )],
             [sg.Column(
                 [[sg.Text('Наименование ТС', font=fontmid),
@@ -939,10 +962,17 @@ class Pages:
         if master == "editor":
             self.fun_vieweditor()
             if ts_id != (None, None):
+                try:
+                    self.addtswindow["author"].Update(baza.get_by_id(ts_id[0])['author'])
+                    self.addtswindow["author"].Update(visible=True)
+                except KeyError:
+                    self.addtswindow["author"].Update('AUTHOR ERROR')
+
                 if ts_id[1] == 0:
                     self.addtswindow['-CloseAddTsPage-'].Update('Выход')
                     self.addtswindow['_SAVE_'].Update('Сохранить в БД')
                     self.addtswindow["bd_delete"].Update(visible=True)
+
             if self.tsavailable == ["Комплект", "Составная часть", "Элемент"]:
                 table1 = self.tsdata[12]
             if self.tsavailable == ["Составная часть", "Элемент"]:
@@ -989,7 +1019,6 @@ class Pages:
                 list_element.update(values=self.predictions_list)
                 sel_item = 0
                 list_element.update(set_to_index=sel_item)
-                print(len(self.predictions_list))
 
                 if len(self.predictions_list) > 0:
                     self.addtswindow[container].update(visible=True)
@@ -1352,11 +1381,12 @@ class Pages:
                         self.addtswindow.close()
 
                     elif master == 'editor' and ts_id != (None, None) and ts_id[1] == 0:
-                        baza.update_element(ts_id[0], self.get_tsvalues(values))
+                        baza.update_element(ts_id[0], self.get_tsvalues(values),
+                                            author=settings_db.get_by_id('1337')['author'])
                         popup_yes(f'"{values["name"]}" изменён в базе.')
 
                     elif master == True:  # ♂oh shit im sorry♂
-                        baza.add(self.get_tsvalues(values))
+                        baza.add(self.get_tsvalues(values), author=self.author)
                         popup_yes(f'"{values["name"]}" добавлен в базу.')
 
                     else:
@@ -1559,11 +1589,9 @@ class Pages:
                         "rgg", "rggpp", "level"]
         listed = []
 
-        for value in values:
-            if value in allowed_list:
-                listed.append(values[value])
-        # my bad... changed in values position
-        listed.insert(8, listed.pop(6))
+        for value in allowed_list:
+            listed.append(values[value])
+
         if values["level"] == "Составная часть" or "Комплект":
             temptable = []
             tables = self.addtswindow["-TABLE-"].Get()
@@ -1725,7 +1753,10 @@ class Pages:
             if it_id:
                 obj = baza.get_by_id(it_id)
                 editor = Pages()
-                editor.tsdata = self.dict_2_list(obj)
+                listed_values = self.dict_2_list(obj)
+                if len(listed_values) == 14:
+                    editor.author = listed_values.pop(1)
+                editor.tsdata = listed_values
                 editor.object = editor.tsdata[0]
                 editor.addtspage(master="editor", headername="Редактирование и просмотр ТС",
                                  ts_id=(it_id, 0))
@@ -2188,8 +2219,13 @@ class Pages:
 
         def generate_display_layout(vals):
             # Заполнение текста в фрейме
+            try:
+                author = vals['author']
+            except KeyError:
+                author = ""
             text_to_display = \
-                f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]}'
+                f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]} {author}'
+            text_to_display = " ".join(text_to_display.split())
             return [[Text(text_to_display, 95, 'l', True)]]
 
         def generate_displayed_items(content, text_key):
@@ -2257,6 +2293,7 @@ class Pages:
             # Заполнение текста в фрейме
             text_to_display = \
                 f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]}'
+            text_to_display = " ".join(text_to_display.split())
             return [[Text(text_to_display, 95, 'l', True)], ]
 
         def generate_displayed_items(content, text_key):
@@ -2277,9 +2314,15 @@ class Pages:
                     if level2['table']:
                         for count2, level3 in enumerate(level2['table']):
                             frame_layout.append(generate_displayed_items(level3, f'{key}_{count2}'))
-            return sg.Frame(
-                f'{object_values["name"]} {object_values["model"]} {object_values["part"]} {object_values["vendor"]} '
-                f'{object_values["serial1"]}', frame_layout, pad=((0, 5), 0))
+            try:
+                author = object_values["author"]
+            except KeyError:
+                author = ""
+
+            frame_text = f'{object_values["name"]} {object_values["model"]} {object_values["part"]} ' \
+                         f'{object_values["vendor"]} {object_values["serial1"]} {author}'
+            frame_text = " ".join(frame_text.split())
+            return sg.Frame(frame_text, frame_layout, pad=((0, 5), 0))
 
         column_layout = [
             [generate_frame(content, count)]

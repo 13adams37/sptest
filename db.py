@@ -1,4 +1,5 @@
 import jsondblite
+import platform
 
 try:
     db = jsondblite.Database("SATURN_MAIN.db", create=True)
@@ -16,21 +17,53 @@ try:
     settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=True)
     with settings_db:
         settings_db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0",
-                         'theme': 'DarkAmber', "input_rows": "16"}, "1337")
+                         'theme': 'DarkAmber', "input_rows": "16", "author": f"{platform.uname().node}"}, "1337")
 except OSError:
     settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=False)
+    settings_dict = settings_db.get('1337')
 
-keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
+    try:
+        test = settings_dict['author']
+    except KeyError:
+        settings_dict.update({"author": f"{platform.uname().node}"})
+        with settings_db:
+            settings_db.update('1337', settings_dict)
+
+    try:
+        test_par = int(settings_dict['max_len'])
+    except ValueError:
+        settings_dict['max_len'] = "0"  # load default value
+        with settings_db:
+            settings_db.update('1337', settings_dict)
+
+    try:
+        test_par = int(settings_dict['input_rows'])
+    except ValueError:
+        settings_dict['input_rows'] = "16" # load default value
+        with settings_db:
+            settings_db.update('1337', settings_dict)
+    del test_par, settings_dict
+
+
+
+base_keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
         'rgg', 'rggpp', 'level', 'table']
-
+keys_with_author = ['object', 'author', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
+        'rgg', 'rggpp', 'level', 'table']
 
 class DataBase:
     def __init__(self, db_name):
         self.dbname = db_name
 
-    def add(self, what):
+    def add(self, what, author=None):
+        if author is None:
+            prepared_dict = self.all_trim_json(self.makejson(what))
+        else:
+            what.insert(1, author)
+            prepared_dict = self.all_trim_json(self.makejson(what, keys=keys_with_author))
+
         with self.dbname:
-            self.dbname.add(self.all_trim_json(self.makejson(what)))
+            self.dbname.add(prepared_dict)
 
     def add_dict(self, what, doc_id=None):
         with self.dbname:
@@ -84,9 +117,15 @@ class DataBase:
     def get_by_id(self, itemid):
         return self.dbname.get(itemid)
 
-    def update_element(self, docid, doc):
+    def update_element(self, docid, doc, author=None):
+        if author is None:
+            prepared_dict = self.all_trim_json(self.makejson(doc))
+        else:
+            doc.insert(1, author)
+            prepared_dict = self.all_trim_json(self.makejson(doc, keys=keys_with_author))
         with self.dbname:
-            self.dbname.update(docid, self.makejson(doc))
+            self.dbname.update(docid, prepared_dict)
+
 
     def update_element_dict(self, docid, doc):
         with self.dbname:
@@ -127,18 +166,20 @@ class DataBase:
                             self.base_trim_string(item1)
         return what
 
-    def makejson(self, elements):  # making dict
+    def makejson(self, elements, keys=None):  # making dict
+        if keys is None:
+            keys = base_keys
         tempdict, tempdict1, tempdict2 = {}, {}, {}
         listdict1, listdict2 = [], []
         for key, element in zip(keys, elements):
             tempdict[key] = element
             if key == "table" and element:
                 for element1 in element:
-                    for key1, element2 in zip(keys, element1):
+                    for key1, element2 in zip(base_keys, element1):
                         tempdict1[key1] = element2
                         if key1 == "table" and element2:
                             for element3 in element2:
-                                for key2, element4 in zip(keys, element3):
+                                for key2, element4 in zip(base_keys, element3):
                                     tempdict2[key2] = element4
                                 listdict2.append(tempdict2.copy())
                                 tempdict2.clear()
