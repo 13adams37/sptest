@@ -529,7 +529,6 @@ class Pages:
         self.addwindow = None
         self.credentialswindow = None
         self.viewwindow = None
-        self.addkomerswindow = None
         self.edittswidow = None
         self.exportwordwindow = None
         self.importwindow = None
@@ -1810,7 +1809,7 @@ class Pages:
                 output_string = ""
                 for elem in sorted(baza.get_unique_index_names('objects')):
                     output_string += f"{elem}\n"
-                sg.popup_scrolled(output_string, font=fontbig, title='Все объекты', no_sizegrip=True)
+                sg.popup_scrolled(output_string, font=fontbig, title='Все объекты', no_sizegrip=True, size=(30, 20))
 
             elif event == '-BOX-' and values['-BOX-']:
                 curs_pos = list_element.TKListbox.curselection()[0]
