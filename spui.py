@@ -10,7 +10,6 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -534,6 +533,7 @@ class Pages:
         self.importwindow = None
         self.seqwindow = None
         self.conclusionwindow = None
+        self.addts_window_saved = False
 
         self.object = None
         self.tsdata = []
@@ -822,7 +822,6 @@ class Pages:
 
     def addtspage(self, master, headername, ts_id=(None, None)):
         global table1, table2
-        window_saved = False
         sel_item = 0
         col_widths = list(map(lambda x: len(x) + 2, headings))
         tabledata = []
@@ -833,7 +832,7 @@ class Pages:
                                                                 s=(int(len(self.object) * 1.2), 5), text_color="black",
                                                                 font=fontmidlow, justification='c'),
                   sg.InputText(key='author', default_text=self.author, disabled=True, visible=False,
-                               s=(int(len(self.author) * 1.2), 5), text_color="black",font=fontmidlow,
+                               s=(int(len(self.author) * 1.2), 5), text_color="black", font=fontmidlow,
                                justification='c')]], justification="c"
             )],
             [sg.Column(
@@ -1030,6 +1029,7 @@ class Pages:
             event, values = self.addtswindow.read()
 
             if event == sg.WIN_CLOSED or event == "-CloseAddTsPage-" or event.startswith('Escape'):
+                window_is_saved = True
                 try:
                     if event.startswith('Escape'):
                         get_focused_elementname = self.addtswindow.find_element_with_focus().Key
@@ -1047,14 +1047,29 @@ class Pages:
 
                 except AttributeError:
                     pass
+                try:
+                    if not self.addts_window_saved:
+                        if values['name'] or values['model'] or values['part'] or values['vendor'] or table.Get():
+                            window_is_saved = False
+                        if master == 'editor' or master == 'slave':
+                            if self.tsdata == self.get_tsvalues(values):  # is not changed in edit
+                                window_is_saved = True
+                            else:
+                                window_is_saved = False
+                        if type(master) is bool and self.get_tsvalues(values) != [self.object, '', '', '', '', '', '', '1', False, '', '', values['level'], []]:
+                            window_is_saved = False
+                except TypeError:
+                    pass
+
+                if event is not sg.WIN_CLOSED:
+                    if not window_is_saved and not self.addts_window_saved:
+                        if not popup_yes_no('Уверены что хотите выйти без сохранения?'):
+                            continue
 
                 if self.tsavailable == ["Комплект", "Составная часть", "Элемент"] and not master:
                     table1.clear()
                 elif self.tsavailable == ["Составная часть", "Элемент"] and not master:
                     table2.clear()
-                if not window_saved and event is not sg.WIN_CLOSED:
-                    if not popup_yes_no('Уверены что хотите выйти без сохранения?'):
-                        continue
                 self.addtswindow.close()
                 break
 
@@ -1162,6 +1177,7 @@ class Pages:
                 self.resize_and_update_table(self.dict_2_list(deepcopy(pasted_content))[12])
                 add_content_to_table()
                 pasted_content.pop('table')
+                self.addts_window_saved = False
 
                 for name, val in pasted_content.items():
                     self.addtswindow[name].update(val)
@@ -1211,7 +1227,6 @@ class Pages:
                     self.addtswindow["-TABLE-"].update(visible=False)
 
             elif event == "-ADDMORE-":
-                window_saved = False
                 page2 = Pages()
                 page3 = Pages()
 
@@ -1222,15 +1237,18 @@ class Pages:
 
                     page2.addtspage(master=False, headername="Добавление 2-го уровня")
 
-                    self.resize_and_update_table(table1)
-
+                    if table1:
+                        self.resize_and_update_table(table1)
+                        self.addts_window_saved = False
                 else:
                     page3.tsavailable = ["Элемент"]
                     page3.object = self.object
 
                     page3.addtspage(master=False, headername="Добавление 3-го уровня")
 
-                    self.resize_and_update_table(table2)
+                    if table2:
+                        self.resize_and_update_table(table2)
+                        self.addts_window_saved = False
 
             elif event == "nopart":
                 if values[event]:
@@ -1385,10 +1403,12 @@ class Pages:
                         baza.update_element(ts_id[0], self.get_tsvalues(values),
                                             author=settings_db.get_by_id('1337')['author'])
                         popup_yes(f'"{values["name"]}" изменён в базе.')
+                        self.addts_window_saved = True
 
                     elif master == True:  # ♂oh shit im sorry♂
                         baza.add(self.get_tsvalues(values), author=self.author)
                         popup_yes(f'"{values["name"]}" добавлен в базу.')
+                        self.addts_window_saved = True
 
                     else:
                         if self.tsavailable == ["Составная часть", "Элемент"]:
@@ -1396,17 +1416,16 @@ class Pages:
                         if self.tsavailable == ["Элемент"]:
                             self.insert_values_into_table(self.get_tsvalues(values), table2)
                         popup_yes(f'"{values["name"]}" добавлен.')
-                    window_saved = True
+                        self.addts_window_saved = True
 
             elif event == "Очистить":
-                if not window_saved:
+                if not self.addts_window_saved:
                     if not popup_yes_no('Уверены что хотите очистить без сохранения?'):
                         continue
                 whitelist = ['object', 'level', '-TABLE-', 'nopart', 'amount']
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1', 'rgg']
                 rmlist = []
-                window_saved = False
-
+                self.addts_window_saved = True
                 self.addtswindow['name'].set_focus()
 
                 for value in values:
@@ -1447,17 +1466,16 @@ class Pages:
                 for cid, width in zip(headings, list(map(lambda x: len(x) + 3, headings))):
                     table_widget.column(cid, width=width)
 
-            elif event == "Удалить":
+            elif event == "Удалить" and values["-TABLE-"]:
                 pos = int(values["-TABLE-"][0])
-
                 if popup_yes_no('Вы уверены что хотите удалить?'):
+                    self.addts_window_saved = False
                     if "Комплект" in self.tsavailable:
                         table1.pop(pos)
                         self.resize_and_update_table(table1)
                     else:
                         table2.pop(pos)
                         self.resize_and_update_table(table2)
-
             elif event == "Редактировать" and values["-TABLE-"]:
                 pos = int(values["-TABLE-"][0])
                 tbl = table.Get()
@@ -1481,14 +1499,13 @@ class Pages:
 
                 if slave.tsavailable == ["Составная часть", "Элемент"]:
                     table1[pos] = slave.tsdata
-
                     self.resize_and_update_table(table1)
+
                 if slave.tsavailable == ["Элемент"]:
                     try:
                         table2[pos] = slave.tsdata
                         self.resize_and_update_table(table2)
                     except IndexError:
-                        print('err  save level')
                         table1[pos] = slave.tsdata
                         self.resize_and_update_table(table1)
 
