@@ -10,6 +10,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
+__version__ = "0.4.1"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -667,7 +668,7 @@ class Pages:
                         font=fontbutton)
             ]
         ]
-        self.settingswindow = sg.Window('Настройки', settingslayout, resizable=True, return_keyboard_events=True,
+        self.settingswindow = sg.Window(f'Настройки. Версия {__version__}', settingslayout, resizable=True, return_keyboard_events=True,
                                         element_justification="c").Finalize()
         self.settingswindow['search'].SetFocus(True)
 
