@@ -5,12 +5,15 @@ import MSWord
 import PySimpleGUI as sg
 import pyperclip
 import sys
+import threading
+import multiprocessing
 
+from concurrent.futures import ProcessPoolExecutor
 from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -30,6 +33,7 @@ sg.set_global_icon(path_to_icon)
 baza = db.DataBase(db_name=db.db)
 settings_db = db.DataBase(db_name=db.settings_db)
 tdb = db.db
+multiprocessing.freeze_support()
 
 listbox_width = 120
 listbox_hight = settings_db.get_by_id("1337")["input_rows"]
@@ -648,18 +652,18 @@ class Pages:
                              , justification='c')
             ],
             [
-                sg.Text('Выбор темы (применение после перезагрузки)', font=fontbig),
+                sg.Text('Выбор темы (применение после перезагрузки) ', font=fontbig),
                 sg.DropDown(values=sg.theme_list(),
                             default_value=temp_settings_query['theme'] if temp_settings_query['theme'] else "DarkAmber",
                             font=fontmid, key='theme', readonly=True, enable_events=True)
             ],
             [
-                sg.Text('Количество строк в списках (масштабирование под разрешение экрана)', font=fontbig),
+                sg.Text('Количество строк в списках (масштабирование под разрешение экрана) ', font=fontbig),
                 sg.InputText(default_text=int(temp_settings_query['input_rows']), font=fontmid, key='input_rows',
                              s=(4, 0), justification='c')
             ],
             [
-                sg.Text('Автор', font=fontbig),
+                sg.Text('Автор ', font=fontbig),
                 sg.InputText(default_text=temp_settings_query['author'], font=fontmid, key='author',
                              s=(40, 0), justification='c')
             ],
@@ -668,7 +672,8 @@ class Pages:
                         font=fontbutton)
             ]
         ]
-        self.settingswindow = sg.Window(f'Настройки. Версия {__version__}', settingslayout, resizable=True, return_keyboard_events=True,
+        self.settingswindow = sg.Window(f'Настройки. Версия {__version__}', settingslayout, resizable=True,
+                                        return_keyboard_events=True,
                                         element_justification="c").Finalize()
         self.settingswindow['search'].SetFocus(True)
 
@@ -1057,7 +1062,9 @@ class Pages:
                                 window_is_saved = True
                             else:
                                 window_is_saved = False
-                        if type(master) is bool and self.get_tsvalues(values) != [self.object, '', '', '', '', '', '', '1', False, '', '', values['level'], []]:
+                        if type(master) is bool and self.get_tsvalues(values) != [self.object, '', '', '', '', '', '',
+                                                                                  '1', False, '', '', values['level'],
+                                                                                  []]:
                             window_is_saved = False
                 except TypeError:
                     pass
@@ -1423,7 +1430,7 @@ class Pages:
                 if not self.addts_window_saved:
                     if not popup_yes_no('Уверены что хотите очистить без сохранения?'):
                         continue
-                whitelist = ['object', 'level', '-TABLE-', 'nopart', 'amount']
+                whitelist = ['object', 'level', '-TABLE-', 'nopart']
                 savelist = ['name', 'model', 'part', 'vendor', 'serial1', 'rgg']
                 rmlist = []
                 self.addts_window_saved = True
@@ -1448,6 +1455,8 @@ class Pages:
                         self.addtswindow[item].Update(False)
                     else:
                         self.addtswindow[item].Update('')
+
+                self.addtswindow['amount'].Update('1')
 
                 if "Комплект" in self.tsavailable:
                     table1.clear()
@@ -1638,6 +1647,20 @@ class Pages:
         return temp
 
     def edit_ts_page(self, headername):
+        class DelayedExecution:
+            def __init__(self, func=None, args=None):
+                self.func = func
+                self.args = args
+                self.timer = None
+
+            def start(self):
+                if self.timer is not None:
+                    self.timer.cancel()
+                    self.timer = None
+
+                self.timer = threading.Timer(1, self.func, self.args)
+                self.timer.start()
+
         def myFunc(e):
             return e[1]
 
@@ -1679,18 +1702,23 @@ class Pages:
 
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
-        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item = [], [], "", "", "", 0
+        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item, active_radio = [], [], "", "", "", 0, "names"
         radid = ("objects", "names", "models", "parts", "vendors", "serials")
-
-        def get_active_radio(val):
-            for rad in radid:
-                if val[rad]:
-                    return rad
+        executor = DelayedExecution(func=self.edittswidow.start_thread)
 
         def get_displyed(response, extra_spaces=""):
+            try:
+                author = response['author']
+            except KeyError:
+                author = ''
             if response is not None:
-                output = f'{response["object"]} {response["name"]} {response["model"]} {response["part"]} {response["vendor"]} {response["serial1"]}'
+                output = f'{response["object"]} {response["name"]} {response["model"]} {response["part"]} {response["vendor"]} {response["serial1"]} {author}'
                 return f"{extra_spaces}{re.sub(' +', ' ', output)}"
+
+        def update_prediction():
+            list_element.update(values=prediction_list)
+            list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+            self.edittswidow.Refresh()
 
         def make_prediction(text, index_name='names'):
             prediction_list.clear()
@@ -1765,9 +1793,6 @@ class Pages:
                             elif cnt >= self.prediction_len != 0:
                                 break
 
-            list_element.update(values=prediction_list)
-            list_element.update(set_to_index=sel_item)
-
         def open_editwindow(it_id):
             if it_id:
                 obj = baza.get_by_id(it_id)
@@ -1789,8 +1814,8 @@ class Pages:
                 if len(values['-BOX-']) > 0:
                     item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
                     open_editwindow(item_id)
-                    radio = get_active_radio(values)
-                    make_prediction(values['-IN-'].lower(), radio)
+                    make_prediction(values['-IN-'].lower(), active_radio)
+                    update_prediction()
 
             elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.edittswidow.close()
@@ -1811,8 +1836,8 @@ class Pages:
                 if len(values['-BOX-']) > 0:
                     item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
                     open_editwindow(item_id)
-                    radio = get_active_radio(values)
-                    make_prediction(values['-IN-'].lower(), radio)
+                    make_prediction(values['-IN-'].lower(), active_radio)
+                    update_prediction()
 
             elif event == '-IN-':
                 text = values['-IN-'].lower()
@@ -1821,7 +1846,12 @@ class Pages:
                 else:
                     input_text = text
 
-                make_prediction(text, get_active_radio(values))
+                executor.args = lambda: make_prediction(text, active_radio), '-THREAD DONE-'
+                executor.start()
+
+            elif event == '-THREAD DONE-':
+                sel_item = 0
+                update_prediction()
 
             elif event == '-SHOWALL-':
                 output_string = ""
@@ -1830,28 +1860,24 @@ class Pages:
                 sg.popup_scrolled(output_string, font=fontbig, title='Все объекты', no_sizegrip=True, size=(30, 20))
 
             elif event == '-BOX-' and values['-BOX-']:
-                curs_pos = list_element.TKListbox.curselection()[0]
-                item_id = prediction_ids[curs_pos]
+                sel_item = list_element.TKListbox.curselection()[0]
+                item_id = prediction_ids[sel_item]
                 open_editwindow(item_id)
-                radio = get_active_radio(values)
-                make_prediction(values['-IN-'].lower(), radio)
-                list_element.update(set_to_index=curs_pos, scroll_to_index=curs_pos)
+                make_prediction(values['-IN-'].lower(), active_radio)
+                update_prediction()
 
             elif event in radid:
                 self.edittswidow['-IN-'].update("")
-                prediction_list, item_id = [], ""
-                list_element.update(values=prediction_list)
-                sel_item = 0
+                prediction_list, item_id, sel_item = [], "", 0
+                active_radio = event
+                update_prediction()
 
             elif event == '-EXTRAS-':
                 popup_input_text_with_hints('Изменение объекта', 'Изменение объекта')
 
                 self.edittswidow['-IN-'].update("")
-                prediction_list, item_id = [], ""
-                list_element.update(values=prediction_list)
-                sel_item = 0
-                radio = get_active_radio(values)
-                make_prediction(values['-IN-'].lower(), radio)
+                prediction_list, item_id, sel_item = [], "", 0
+                update_prediction()
 
         self.edittswidow.close()
 
@@ -1975,15 +2001,24 @@ class Pages:
                     export_path = sg.popup_get_folder('export', no_window=True)
 
                     try:
-                        mswordlib.act_table(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")
-                        mswordlib.conclusion_table(conclusion_data, f"{export_path}"'/'f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
-                        mswordlib.methods_table(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")
-                        mswordlib.ims_table(objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")
+                        multiprocessing.Process(target=mswordlib.act_table,
+                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")).start()
+                        multiprocessing.Process(target=mswordlib.methods_table,
+                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")).start()
+                        multiprocessing.Process(target=mswordlib.ims_table,
+                                                args=(
+                                                objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")).start()
+
+                        with ProcessPoolExecutor() as executor:
+                            returned = executor.submit(mswordlib.conclusion_table, conclusion_data,
+                                                       f"{export_path}"'/'f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
+                            serial_1, serial_2 = returned.result()
+
                         sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
                                           auto_close=True, font=fontbig, button_type=5)
+                        sg.popup_ok(f'СЗЗ 1 = {serial_1}\n'
+                                    f'СЗЗ 2 = {serial_2}\n', no_titlebar=True, font=fontbig)
 
-                        sg.popup_ok(f'СЗЗ 1 = {mswordlib.serial1_count}\n'
-                                    f'СЗЗ 2 = {mswordlib.serial2_count}\n', no_titlebar=True, font=fontbig)
                     except PermissionError:
                         sg.Window('Ошибка',
                                   [[sg.T('Закройте документ(ы)!', font=fontbig)],

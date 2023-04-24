@@ -157,6 +157,7 @@ class Word:
             fill_conclusion_by_row(item, counter_l1, l1_row_to_fill, str(serial_counter))
             self.serial2_count += serial_counter
         doc.save(f'{output_name}.docx')
+        return self.serial1_count, self.serial2_count
 
     def methods_table(self, elements, output_name):
         def fill_new_row_methods(main_object, cnt):
