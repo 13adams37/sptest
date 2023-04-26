@@ -2,6 +2,8 @@ import re
 from copy import deepcopy
 import docx
 
+import db
+
 nonBreakSpace = u'\xa0'
 
 
@@ -16,6 +18,8 @@ def prep(elmtor):
     elmt = elmtor.copy()
     if elmt['part'] not in ("", "б/н"):
         elmt['part'] = f"№{nonBreakSpace}{elmt['part']}"
+    else:
+        elmt['part'] = f"б/н"
     output = f"{elmt['name']} {elmt['vendor']} {elmt['model']} {elmt['part']}"
     return f"{re.sub(' +', ' ', output)}"
 
@@ -31,7 +35,7 @@ class Word:
             cell[0].text = str(cnt)
             cell[1].text = main_object['name']
             cell[2].text = main_object['model']
-            cell[3].text = main_object['part']
+            cell[3].text = main_object['part'] if main_object['part'] else 'б/н'
             cell[4].text = main_object['vendor']
             cell[5].text = main_object['amount']
             cell[6].text = empty_serial(main_object['serial1'])
@@ -160,25 +164,46 @@ class Word:
         return self.serial1_count, self.serial2_count
 
     def methods_table(self, elements, output_name):
-        def fill_new_row_methods(main_object, cnt):
+        def fill_new_row_methods(main_object, cnt, method, author):
             cell = table.add_row().cells
             cell[0].text = str(cnt)
             cell[1].text = prep(main_object)
+            cell[2].text = str(method)
+            cell[3].text = str(author)
+
+        def get_method(name):
+            for method_id in iter(db.methods_db):
+                method_content = db.methods_db.get(method_id)
+                if method_content['type'] == 'По содержанию':
+                    # if method_content['name'].lower().__contains__(name):
+                    if name.lower().__contains__(method_content['name'].lower()):
+                        print(method_content['methods'], 'cont for', name)
+                        return method_content['methods']
+                else:
+                    if method_content['name'].lower() == name:
+                        print(method_content['methods'], '== for', name)
+                        return method_content['methods']
+            return ''
 
         doc = docx.Document()
         table = doc.add_table(rows=0, cols=4)
         table.style = 'Table Grid'
+        print(elements)
 
         for counter_l1, item in enumerate(elements, start=1):
-            fill_new_row_methods(item, f"{counter_l1}")
+            try:
+                author = item['author']
+            except KeyError:
+                author = ""
 
+            fill_new_row_methods(item, f"{counter_l1}", get_method(item['name'].lower()), author)
             if item['table']:
                 for counter_l2, item1 in enumerate(item['table'], start=1):
-                    fill_new_row_methods(item1, f"{counter_l1}.{counter_l2}")
+                    fill_new_row_methods(item1, f"{counter_l1}.{counter_l2}", get_method(item1['name'].lower()), author)
 
                     if item1['table']:
                         for counter_l3, item2 in enumerate(item1['table'], start=1):
-                            fill_new_row_methods(item2, f"{counter_l1}.{counter_l2}.{counter_l3}")
+                            fill_new_row_methods(item2, f"{counter_l1}.{counter_l2}.{counter_l3}", get_method(item2['name'].lower()), author)
 
         doc.save(f'{output_name}.docx')
 

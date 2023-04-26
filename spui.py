@@ -13,7 +13,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -257,6 +257,7 @@ def real_popup_input_text_with_hints(headername, middle_text="",
     if "<Key>" not in hintedinputwindow.TKroot.bind_all():
         hintedinputwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
+    hintedinputwindow['-IN-'].SetFocus(True)
     list_element: sg.Listbox = hintedinputwindow.Element('-BOX-')
     prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
 
@@ -359,6 +360,7 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
     if "<Key>" not in hintedinputwindow.TKroot.bind_all():
         hintedinputwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
+    hintedinputwindow['-IN-'].SetFocus(True)
     list_element: sg.Listbox = hintedinputwindow.Element('-BOX-')
     prediction_list, prediction_ids, input_text, sel_item = [], [], "", 0
 
@@ -1700,6 +1702,7 @@ class Pages:
         if "<Key>" not in self.edittswidow.TKroot.bind_all():
             self.edittswidow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
+        self.edittswidow['-IN-'].SetFocus(True)
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
         prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item, active_radio = [], [], "", "", "", 0, "names"
@@ -1822,7 +1825,13 @@ class Pages:
                 break
 
             elif event.startswith('Escape'):
-                self.edittswidow['-IN-'].update('')
+                if values['-IN-']:
+                    self.edittswidow['-IN-'].update('')
+                    prediction_list, item_id, sel_item = [], "", 0
+                    update_prediction()
+                else:
+                    self.edittswidow.close()
+                    break
 
             elif event.startswith('Down') and len(prediction_list):
                 sel_item = (sel_item + 1) % len(prediction_list)
@@ -1900,6 +1909,7 @@ class Pages:
             [
                 sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
                         enable_events=True, expand_x=True),
+                sg.Button("Методы", key="-METHODS-", font=fontbutton),
                 sg.Button("Экспортировать", key="-OPEN-", font=fontbutton),
             ]
         ]
@@ -1907,11 +1917,12 @@ class Pages:
         self.exportwordwindow = sg.Window(headername, wordlayout, resizable=True, return_keyboard_events=True,
                                           element_justification="").Finalize()
         self.exportwordwindow.Maximize()
-        list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
-        list_element.TKListbox.configure(activestyle='none')
         if "<Key>" not in self.exportwordwindow.TKroot.bind_all():
             self.exportwordwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
+        self.exportwordwindow['-IN-'].SetFocus(True)
+        list_element: sg.Listbox = self.exportwordwindow.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')
         prediction_list, input_text, sel_item = [], "", 0
         choices = sorted(baza.get_unique_index_names('objects'))
 
@@ -2002,12 +2013,14 @@ class Pages:
 
                     try:
                         multiprocessing.Process(target=mswordlib.act_table,
-                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")).start()
+                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")) \
+                            .start()
                         multiprocessing.Process(target=mswordlib.methods_table,
-                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")).start()
+                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")) \
+                            .start()
                         multiprocessing.Process(target=mswordlib.ims_table,
-                                                args=(
-                                                objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")).start()
+                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")) \
+                            .start()
 
                         with ProcessPoolExecutor() as executor:
                             returned = executor.submit(mswordlib.conclusion_table, conclusion_data,
@@ -2025,6 +2038,10 @@ class Pages:
                                    [sg.Button('Понял', font=fontbutton)]],
                                   element_justification="c", no_titlebar=True, size=(600, 100), auto_close=True,
                                   auto_close_duration=5).read(close=True)
+
+            elif event == "-METHODS-":
+                self.exportwordwindow.close()
+                self.methods_page()
 
         self.exportwordwindow.close()
 
@@ -2057,6 +2074,7 @@ class Pages:
         if "<Key>" not in self.importwindow.TKroot.bind_all():
             self.importwindow.TKroot.bind_all("<Key>", _onKeyRelease, "+")
 
+        self.importwindow['-IN-'].SetFocus(True)
         list_element: sg.Listbox = self.importwindow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
         prediction_list, input_text, sel_item = [], "", 0
@@ -2553,6 +2571,253 @@ class Pages:
 
             elif event == '-ALPHABET-':
                 re_renumerate_items(alphabetical_sort(test_ids, test_vals))
+
+    def methods_page(self):
+        class MethodsActions:
+            def __init__(self, method_id=""):
+                self.type = None
+                self.name = None
+                self.methods = None
+                self.method_id = method_id
+
+            def save_method(self):
+                dict_to_save = {
+                    "type": self.type,
+                    "name": self.name,
+                    "methods": self.methods
+                }
+                if self.method_id:
+                    methods_db.update_element_dict(self.method_id, dict_to_save)
+                else:
+                    methods_db.add_dict(dict_to_save)
+
+            def get_name_method_by_name(self, current_values):
+                for line_id in get_id_content_methods_sorted():
+                    if line_id[1]['name'].lower() == current_values['name'].lower()\
+                            and line_id[1]['methods'].lower() == current_values['methods_names'].lower():
+                        return True
+
+            def open_methods_window(self, header_name="Создание метода"):
+                if self.method_id:
+                    old_method = methods_db.get_by_id(self.method_id)
+                    self.type = old_method['type']
+                    self.name = old_method['name']
+                    self.methods = old_method['methods']
+
+                method_action_layout = [
+                    [
+                        sg.Column([
+                            [
+                                sg.Text('Условие ', font=fontbig),
+                                sg.DropDown(values=['По содержанию', 'Точное соответствие'],
+                                            default_value="По содержанию" if self.type is None else self.type,
+                                            font=fontmid, key='type', readonly=True)],
+                            [
+                                sg.Text('Наименование ТС ', font=fontbig),
+                                sg.InputText(default_text="" if self.name is None else self.name,
+                                             font=fontmid, key='name', s=(45, 0), justification='l')
+                            ],
+                            [
+                                sg.Text('Наименование используемых методов ', font=fontbig),
+                                sg.InputText(default_text="" if self.methods is None else self.methods,
+                                             font=fontmid, key='methods_names', s=(45, 0), justification='l')
+                            ], ], justification="c", element_justification="c")
+                    ],
+                    [
+                        sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                                enable_events=True, expand_x=True),
+                        sg.Button('Сохранить', key="-SAVE-", font=fontbutton),
+                    ]
+                ]
+
+                methods_actions_window = sg.Window(header_name, method_action_layout, resizable=True,
+                                                   return_keyboard_events=True, element_justification="").Finalize()
+                if "<Key>" not in methods_actions_window.TKroot.bind_all():
+                    methods_actions_window.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+                methods_actions_window['name'].SetFocus(True)
+
+                while True:
+                    event, values = methods_actions_window.read()
+
+                    if event == sg.WIN_CLOSED:
+                        methods_actions_window.close()
+                        break
+
+                    elif event == "-CLOSE-" or event.startswith('Escape'):
+                        if self.type == values['type'] and self.name == values['name'] and \
+                                self.methods == values['methods_names']:
+                            pass
+                        elif values['name'] == "" and values['methods_names'] == "":
+                            pass
+                        else:
+                            if not popup_yes_no('Вы уверены что хотите выйти без сохранения?'):
+                                continue
+                        methods_actions_window.close()
+                        break
+
+                    elif event == '-SAVE-':
+                        if values['type'] and values['name'] and values['methods_names']:
+                            if self.name == values['name'] \
+                                    and self.methods == values['methods_names'] \
+                                    and not self.method_id:
+                                if not popup_yes_no('Вы только что сохранили такой же метод, '
+                                                    '\n вы ходите сохранить его повторно (как дубликат)?'):
+                                    continue
+
+                            if self.get_name_method_by_name(values) and not self.method_id:
+                                if not popup_yes_no('Наименование с такими же методами уже существует в базе, '
+                                                    '\n вы ходите сохранить его повторно (как дубликат)?'):
+                                    continue
+
+                            self.type = values['type']
+                            self.name = values['name']
+                            self.methods = values['methods_names']
+
+                            self.save_method()
+
+                            if self.method_id:
+                                methods_actions_window.close()
+
+                            popup_yes('Сохранено.')
+                        else:
+                            popup_yes('Все поля должны быть заполнены!')
+
+        def get_displyed(response):
+            if response is not None:
+                output = f'{response["name"]} {response["methods"]} {response["type"]}'
+                return f"{re.sub(' +', ' ', output)}"
+
+        def display_methods(list_to_display):
+            list_element.update(list_to_display)
+            list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+        def get_id_content_methods_sorted():
+            def sort_by_name(e):
+                return e[1]['name'].lower()
+
+            id_content_list = []
+            for id_content in iter(db.methods_db):
+                id_content_list.append((id_content, methods_db.get_by_id(id_content)))
+
+            return sorted(list(id_content_list), key=sort_by_name)
+
+        def get_all_methods():
+            methods_listed = []
+            methods_ids_listed = []
+            for line in get_id_content_methods_sorted():
+                methods_listed.append(get_displyed(line[1]))
+                methods_ids_listed.append(line[0])
+
+            display_methods(methods_listed)
+            return methods_ids_listed
+
+        def get_methods_by_name(name):
+            methods_listed = []
+            methods_ids_listed = []
+            if self.search_type:
+                for methods_id in get_id_content_methods_sorted():
+                    if methods_id[1]['name'].lower().__contains__(name):
+                        methods_listed.append(get_displyed(methods_id[1]))
+                        methods_ids_listed.append(methods_id[0])
+            else:
+                for methods_id in get_id_content_methods_sorted():
+                    if methods_id[1]['name'].lower().startswith(name):
+                        methods_listed.append(get_displyed(methods_id[1]))
+                        methods_ids_listed.append(methods_id[0])
+
+            display_methods(methods_listed)
+            return methods_ids_listed
+
+        methodslayout = [
+            [
+                sg.Column([
+                    [sg.T("         ")],
+                    [sg.T("МЕТОДЫ", font=fontbig)],
+                    [sg.T("         ")],
+                    [sg.Input(size=(listbox_width, 0), enable_events=True, key='-IN-', justification="l",
+                              font=fontbig)],
+                    [sg.pin(sg.Col(
+                        [[sg.Listbox(values=[], size=(listbox_width, listbox_hight), enable_events=True, key='-BOX-',
+                                     select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, no_scrollbar=False, font=fontbig,
+                                     horizontal_scroll=True, expand_y=True)]],
+                        key='-BOX-CONTAINER-', pad=(0, 0)))],
+                ], justification="c", element_justification="c")
+            ],
+            [
+                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
+                        enable_events=True, expand_x=True),
+                sg.Button('Удалить', key="-DELETE-", font=fontbutton),
+                sg.Button('Редактировать', key="-EDIT-", font=fontbutton),
+                sg.Button("Создать новый", key="-NEW-", font=fontbutton),
+            ]
+        ]
+
+        methods_window = sg.Window('Методы', methodslayout, resizable=True, return_keyboard_events=True,
+                                   element_justification="").Finalize()
+        methods_window.Maximize()
+        if "<Key>" not in methods_window.TKroot.bind_all():
+            methods_window.TKroot.bind_all("<Key>", _onKeyRelease, "+")
+            
+        methods_window['-IN-'].SetFocus(True)
+        list_element: sg.Listbox = methods_window.Element('-BOX-')
+        list_element.TKListbox.configure(activestyle='none')
+        sel_item = 0
+        methods_db = db.DataBase(db_name=db.methods_db)
+        methods_ids = get_all_methods()
+
+        while True:
+            event, values = methods_window.read()
+
+            if event == "-CLOSE-" or event == sg.WIN_CLOSED:
+                methods_window.close()
+                break
+
+            elif event.startswith('Down') and len(methods_ids):
+                sel_item = (sel_item + 1) % len(methods_ids)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+            elif event.startswith('Up') and len(methods_ids):
+                sel_item = (sel_item + (len(methods_ids) - 1)) % len(methods_ids)
+                list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
+
+            elif event == '-IN-':
+                methods_ids = get_methods_by_name(values['-IN-'].lower())
+
+            elif event == '\r' and len(values['-BOX-']) > 0:
+                sel_item = list_element.TKListbox.curselection()[0]
+                edited_method = MethodsActions(methods_ids[sel_item])
+                edited_method.open_methods_window('Редактирование метода')
+                methods_ids = get_all_methods()
+                del edited_method
+
+            elif event == '-BOX-' and values['-BOX-']:
+                if sel_item == list_element.TKListbox.curselection()[0]:
+                    edited_method = MethodsActions(methods_ids[list_element.TKListbox.curselection()[0]])
+                    edited_method.open_methods_window('Редактирование метода')
+                    methods_ids = get_all_methods()
+                    del edited_method
+                else:
+                    sel_item = list_element.TKListbox.curselection()[0]
+
+            elif event == '-NEW-':
+                new_method = MethodsActions()
+                new_method.open_methods_window()
+                sel_item = 0
+                methods_ids = get_all_methods()
+                del new_method
+
+            elif event == '-EDIT-' and values['-BOX-']:
+                sel_item = list_element.TKListbox.curselection()[0]
+                edited_method = MethodsActions(methods_ids[sel_item])
+                edited_method.open_methods_window('Редактирование метода')
+                methods_ids = get_all_methods()
+                del edited_method
+
+            elif event == '-DELETE-' and values['-BOX-']:
+                if popup_yes_no(f'Вы действительно хотите удалить метод для "{methods_db.get_by_id(methods_ids[list_element.TKListbox.curselection()[0]])["name"]}"?'):
+                    methods_db.delete_by_id(methods_ids[list_element.TKListbox.curselection()[0]])
+                    sel_item = 0
+                    methods_ids = get_all_methods()
 
 
 class SpUi:

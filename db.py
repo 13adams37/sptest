@@ -14,6 +14,13 @@ except OSError:
     db = jsondblite.Database("SATURN_MAIN.db", create=False)
 
 try:
+    methods_db = jsondblite.Database("methods_db.db", create=True)
+    # with methods_db:
+    #     methods_db.add({})
+except OSError:
+    methods_db = jsondblite.Database("methods_db.db", create=False)
+
+try:
     settings_db = jsondblite.Database("C:\SP_temp\SP_settings.db", create=True)
     with settings_db:
         settings_db.add({"search": True, "hints": True, "savestates": True, "jump": True, "max_len": "0",
@@ -39,17 +46,17 @@ except OSError:
     try:
         test_par = int(settings_dict['input_rows'])
     except ValueError:
-        settings_dict['input_rows'] = "16" # load default value
+        settings_dict['input_rows'] = "16"  # load default value
         with settings_db:
             settings_db.update('1337', settings_dict)
     del test_par, settings_dict
 
 
-
 base_keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
-        'rgg', 'rggpp', 'level', 'table']
+             'rgg', 'rggpp', 'level', 'table']
 keys_with_author = ['object', 'author', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
-        'rgg', 'rggpp', 'level', 'table']
+                    'rgg', 'rggpp', 'level', 'table']
+
 
 class DataBase:
     def __init__(self, db_name):
@@ -126,7 +133,6 @@ class DataBase:
         with self.dbname:
             self.dbname.update(docid, prepared_dict)
 
-
     def update_element_dict(self, docid, doc):
         with self.dbname:
             self.dbname.update(docid, doc)
@@ -147,23 +153,26 @@ class DataBase:
         what['rggpp'] = " ".join(what['rggpp'].split())
 
     def all_trim_json(self, what):
-        if type(what) == list:
-            for item in what:
-                self.base_trim_string(item)
-                if item['table']:
-                    for item1 in item['table']:
-                        self.base_trim_string(item1)
-                        if item1['table']:
-                            for item2 in item1['table']:
-                                self.base_trim_string(item2)
-        else:
-            self.base_trim_string(what)
-            if what['table']:
-                for item in what['table']:
+        try:
+            if type(what) == list:
+                for item in what:
                     self.base_trim_string(item)
                     if item['table']:
                         for item1 in item['table']:
                             self.base_trim_string(item1)
+                            if item1['table']:
+                                for item2 in item1['table']:
+                                    self.base_trim_string(item2)
+            else:
+                self.base_trim_string(what)
+                if what['table']:
+                    for item in what['table']:
+                        self.base_trim_string(item)
+                        if item['table']:
+                            for item1 in item['table']:
+                                self.base_trim_string(item1)
+        except KeyError:
+            pass
         return what
 
     def makejson(self, elements, keys=None):  # making dict
