@@ -1929,6 +1929,7 @@ class Pages:
 
             if event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.exportwordwindow.close()
+                print('closed!')
                 break
 
             elif event.startswith('Escape'):
@@ -2018,7 +2019,7 @@ class Pages:
                     ]
 
                     for arg in processor_args:
-                        p = multiprocessing.Process(target=MSWord.processes_runner, args=arg)
+                        p = multiprocessing.Process(target=MSWord.processes_runner, args=arg, daemon=False)
                         processes.append(p)
                         p.start()
 
