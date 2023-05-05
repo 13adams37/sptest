@@ -15,8 +15,6 @@ except OSError:
 
 try:
     methods_db = jsondblite.Database("methods_db.db", create=True)
-    # with methods_db:
-    #     methods_db.add({})
 except OSError:
     methods_db = jsondblite.Database("methods_db.db", create=False)
 

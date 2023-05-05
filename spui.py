@@ -8,12 +8,11 @@ import sys
 import threading
 import multiprocessing
 
-from concurrent.futures import ProcessPoolExecutor
 from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.3"
+__version__ = "0.4.4"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -1891,7 +1890,6 @@ class Pages:
         self.edittswidow.close()
 
     def word_output_page(self, headername):
-        mswordlib = MSWord.Word()
         wordlayout = [
             [
                 sg.Column([
@@ -2010,34 +2008,28 @@ class Pages:
                         continue
 
                     export_path = sg.popup_get_folder('export', no_window=True)
+                    child_conn, parent_conn = multiprocessing.Pipe()
+                    MSWord.main_docs_dict, processes = {}, []
+                    processor_args = [
+                        ('act_table', objects, child_conn, [export_path, values['-IN-']]),
+                        ('conclusion_table', conclusion_data, child_conn, [export_path, values['-IN-']]),
+                        ('methods_table', objects, child_conn, [export_path, values['-IN-']]),
+                        ('ims_table', objects, child_conn, [export_path, values['-IN-']])
+                    ]
 
-                    try:
-                        multiprocessing.Process(target=mswordlib.act_table,
-                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} АКТ")) \
-                            .start()
-                        multiprocessing.Process(target=mswordlib.methods_table,
-                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} МЕТОДЫ")) \
-                            .start()
-                        multiprocessing.Process(target=mswordlib.ims_table,
-                                                args=(objects, f"{export_path}"'/'f"{values['-IN-']} СПИСОК ИМС")) \
-                            .start()
+                    for arg in processor_args:
+                        p = multiprocessing.Process(target=MSWord.processes_runner, args=arg)
+                        processes.append(p)
+                        p.start()
 
-                        with ProcessPoolExecutor() as executor:
-                            returned = executor.submit(mswordlib.conclusion_table, conclusion_data,
-                                                       f"{export_path}"'/'f"{values['-IN-']} ЗАКЛЮЧЕНИЕ")
-                            serial_1, serial_2 = returned.result()
+                    for p in processes:
+                        p.join()
 
-                        sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
-                                          auto_close=True, font=fontbig, button_type=5)
-                        sg.popup_ok(f'СЗЗ 1 = {serial_1}\n'
-                                    f'СЗЗ 2 = {serial_2}\n', no_titlebar=True, font=fontbig)
+                    serial_1, serial_2 = parent_conn.recv()
 
-                    except PermissionError:
-                        sg.Window('Ошибка',
-                                  [[sg.T('Закройте документ(ы)!', font=fontbig)],
-                                   [sg.Button('Понял', font=fontbutton)]],
-                                  element_justification="c", no_titlebar=True, size=(600, 100), auto_close=True,
-                                  auto_close_duration=5).read(close=True)
+                    sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
+                                      auto_close=True, font=fontbig, button_type=5)
+                    popup_yes(f'СЗЗ 1 = {serial_1}\n'f'СЗЗ 2 = {serial_2}\n')
 
             elif event == "-METHODS-":
                 self.exportwordwindow.close()
@@ -2593,7 +2585,7 @@ class Pages:
 
             def get_name_method_by_name(self, current_values):
                 for line_id in get_id_content_methods_sorted():
-                    if line_id[1]['name'].lower() == current_values['name'].lower()\
+                    if line_id[1]['name'].lower() == current_values['name'].lower() \
                             and line_id[1]['methods'].lower() == current_values['methods_names'].lower():
                         return True
 
@@ -2757,7 +2749,7 @@ class Pages:
         methods_window.Maximize()
         if "<Key>" not in methods_window.TKroot.bind_all():
             methods_window.TKroot.bind_all("<Key>", _onKeyRelease, "+")
-            
+
         methods_window['-IN-'].SetFocus(True)
         list_element: sg.Listbox = methods_window.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
@@ -2787,14 +2779,20 @@ class Pages:
                 sel_item = list_element.TKListbox.curselection()[0]
                 edited_method = MethodsActions(methods_ids[sel_item])
                 edited_method.open_methods_window('Редактирование метода')
-                methods_ids = get_all_methods()
+                if values['-IN-']:
+                    methods_ids = get_methods_by_name(values['-IN-'].lower())
+                else:
+                    methods_ids = get_all_methods()
                 del edited_method
 
             elif event == '-BOX-' and values['-BOX-']:
                 if sel_item == list_element.TKListbox.curselection()[0]:
                     edited_method = MethodsActions(methods_ids[list_element.TKListbox.curselection()[0]])
                     edited_method.open_methods_window('Редактирование метода')
-                    methods_ids = get_all_methods()
+                    if values['-IN-']:
+                        methods_ids = get_methods_by_name(values['-IN-'].lower())
+                    else:
+                        methods_ids = get_all_methods()
                     del edited_method
                 else:
                     sel_item = list_element.TKListbox.curselection()[0]
@@ -2802,22 +2800,31 @@ class Pages:
             elif event == '-NEW-':
                 new_method = MethodsActions()
                 new_method.open_methods_window()
-                sel_item = 0
-                methods_ids = get_all_methods()
+                if values['-IN-']:
+                    methods_ids = get_methods_by_name(values['-IN-'].lower())
+                else:
+                    methods_ids = get_all_methods()
                 del new_method
 
             elif event == '-EDIT-' and values['-BOX-']:
                 sel_item = list_element.TKListbox.curselection()[0]
                 edited_method = MethodsActions(methods_ids[sel_item])
                 edited_method.open_methods_window('Редактирование метода')
-                methods_ids = get_all_methods()
+                if values['-IN-']:
+                    methods_ids = get_methods_by_name(values['-IN-'].lower())
+                else:
+                    methods_ids = get_all_methods()
                 del edited_method
 
-            elif event == '-DELETE-' and values['-BOX-']:
-                if popup_yes_no(f'Вы действительно хотите удалить метод для "{methods_db.get_by_id(methods_ids[list_element.TKListbox.curselection()[0]])["name"]}"?'):
+            elif event == '-DELETE-' or event.startswith('Delete') and values['-BOX-']:
+                if popup_yes_no(f'Вы действительно хотите удалить метод для "'
+                                f'{methods_db.get_by_id(methods_ids[list_element.TKListbox.curselection()[0]])["name"]}'
+                                f'"?'):
                     methods_db.delete_by_id(methods_ids[list_element.TKListbox.curselection()[0]])
-                    sel_item = 0
-                    methods_ids = get_all_methods()
+                    if values['-IN-']:
+                        methods_ids = get_methods_by_name(values['-IN-'].lower())
+                    else:
+                        methods_ids = get_all_methods()
 
 
 class SpUi:
