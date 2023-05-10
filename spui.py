@@ -1152,10 +1152,10 @@ class Pages:
                 def add_content_to_table():
                     temp_content = deepcopy(pasted_content)
                     temp_table = self.dict_2_list(temp_content)[12]
-                    if current_max_depth == 3:
+                    if current_max_depth == 3 and temp_table != table1:
                         for item in temp_table:
                             table1.append(item)
-                    elif current_max_depth == 2:
+                    elif current_max_depth == 2 and temp_table != table2:
                         for item in temp_table:
                             table2.append(item)
                     else:
@@ -1360,7 +1360,11 @@ class Pages:
                                     pass
                                 else:
                                     if item[0] != '444':
-                                        main_content = db.db[item[0]]
+                                        try:
+                                            main_content = db.db[item[0]]
+                                        except KeyError:
+                                            continue
+                                        main_content_name = main_content["name"]
                                         if master == True or (master == 'editor' and ts_id[1] == 0) and \
                                                 values['part'] == main_content['part']:
                                             dubs_layout = [
@@ -1374,7 +1378,8 @@ class Pages:
                                                                        numalign="center", stralign="center")),
                                                           font=('Consolas', 20))],
                                                     [sg.T(
-                                                        f"\nВведите 1 для добавления(или изменения) ТС.\n{'Введите 2 для замены ТС в базе. (производит удаление)' if values['part'] == main_content['part'] else ''}\n"
+                                                        f"\nВведите 1 для сохранения ТС.\n"
+                                                        f"{f'Введите 2 для замены ТС в базе. (Будет добавлено новое ТС. {main_content_name} будет УДАЛЁН!)' if values['part'] == main_content['part'] else ''}\n"
                                                         f"Закройте окно для отмены действия.", font=fontbig,
                                                         justification='c')]
                                                 ], justification='c', element_justification='c')
@@ -1487,6 +1492,7 @@ class Pages:
                     else:
                         table2.pop(pos)
                         self.resize_and_update_table(table2)
+
             elif event == "Редактировать" and values["-TABLE-"]:
                 pos = int(values["-TABLE-"][0])
                 tbl = table.Get()
@@ -1929,7 +1935,6 @@ class Pages:
 
             if event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.exportwordwindow.close()
-                print('closed!')
                 break
 
             elif event.startswith('Escape'):
@@ -1992,7 +1997,7 @@ class Pages:
 
                 if baza.search_if_exists("$.object", values['-IN-']):
                     level_status = False
-                    if popup_yes_no("Экспортировать частично? \n Да - Частично, Нет - Всё"):
+                    if popup_yes_no("Экспортировать частично? \n Да - Частично, Нет - Все"):
                         objects = make_listed_items(self.select_items_method(baza.search("$.object", values['-IN-'])))
                     else:
                         objects = make_listed_items(baza.search("$.object", values['-IN-']))
@@ -2004,7 +2009,7 @@ class Pages:
                                 break
 
                     if level_status:
-                        if popup_yes_no("Выбрать компоненты для заключения?"):
+                        if popup_yes_no("Выбрать компоненты для заключения? \n Да - Выбрать, Нет - Все"):
                             conclusion_data = self.set_conclusion_items_page(objects)
                         else:
                             conclusion_data = objects
