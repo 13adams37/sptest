@@ -2030,7 +2030,7 @@ class Pages:
                                 break
 
                     if level_status:
-                        if popup_yes_no("Выбрать компоненты для заключения? \n Да - Выбрать, Нет - Все"):
+                        if popup_yes_no("Выбрать компоненты для заключения?"):
                             conclusion_data = self.set_conclusion_items_page(objects)
                         else:
                             conclusion_data = objects
@@ -2040,7 +2040,11 @@ class Pages:
                     if conclusion_data is None:
                         continue
 
-                    export_path = sg.popup_get_folder('export', no_window=True)
+                    export_path = sg.popup_get_folder('export', icon=path_to_icon, no_window=True)
+
+                    if not export_path or export_path is None:
+                        continue
+
                     child_conn, parent_conn = multiprocessing.Pipe()
                     MSWord.main_docs_dict, processes = {}, []
                     processor_args = [
@@ -2163,8 +2167,6 @@ class Pages:
                     objects = baza.search("$.object", values['-IN-'])
                     selected_data = self.select_items_method(objects)
                     if selected_data is not None:
-                        #     continue
-                        # else:
                         path = sg.popup_get_folder('export', no_window=True)
                         if path and path is not None:
                             with open(f"{path}"'/'f"{values['-IN-']}.json", "w") as f:
