@@ -12,7 +12,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.4"
+__version__ = "0.4.5"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -1063,12 +1063,10 @@ class Pages:
                     pass
                 try:
                     if not self.addts_window_saved:
-                        if values['name'] or values['model'] or values['part'] or values['vendor'] or table.Get():
-                            window_is_saved = False
                         if master == 'editor' or master == 'slave':
-                            if self.tsdata == self.get_tsvalues(values):  # is not changed in edit
-                                window_is_saved = True
-                            else:
+                            if not self.tsdata == self.get_tsvalues(values):  # is not changed in edit
+                                window_is_saved = False
+                            if not ts_id[1] and not self.tsdata == self.dict_2_list_no_author(baza.get_by_id(ts_id[0])):
                                 window_is_saved = False
                         if type(master) is bool and self.get_tsvalues(values) != [self.object, '', '', '', '', '', '',
                                                                                   '1', False, '', '', values['level'],
@@ -1661,6 +1659,23 @@ class Pages:
         dict_obj["table"] = temp
         return list(dict_obj.values())
 
+    def dict_2_list_no_author(self, dict_obj):
+        try:
+            dict_obj.pop('author')
+        except KeyError:
+            pass
+        temp, temp2 = [], []
+        if dict_obj["table"]:
+            for z in dict_obj["table"]:
+                if z["table"]:
+                    for v in z["table"]:
+                        temp2.append(list(v.values()))
+                z["table"] = temp2.copy()
+                temp2.clear()
+                temp.append(list(z.values()))
+        dict_obj["table"] = temp
+        return list(dict_obj.values())
+
     def trim_table(self, dict_obj):
         temp = dict_obj.copy()
         del temp['table']
@@ -1687,8 +1702,8 @@ class Pages:
         editlayout = [
             [
                 sg.Column([
-                    [sg.Radio("Объект", "rad0", k='objects', enable_events=True, font=fontbig),
-                     sg.Radio("Название", "rad0", k='names', default=True, enable_events=True, font=fontbig),
+                    [sg.Radio("Объект", "rad0", k='objects', enable_events=True, font=fontbig, default=True),
+                     sg.Radio("Название", "rad0", k='names', enable_events=True, font=fontbig),
                      sg.Radio("Модель", "rad0", k="models", enable_events=True, font=fontbig),
                      sg.Radio("Серийный номер", "rad0", k="parts", enable_events=True, font=fontbig),
                      sg.Radio("Производитель", "rad0", k="vendors", enable_events=True, font=fontbig),
@@ -1723,8 +1738,8 @@ class Pages:
         self.edittswidow['-IN-'].SetFocus(True)
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
-        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item, active_radio = [], [], "", "", "", 0, "names"
-        radid = ("objects", "names", "models", "parts", "vendors", "serials")
+        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item, active_radio = \
+            [], [], "", "", "", 0, "objects"
         executor = DelayedExecution(func=self.edittswidow.start_thread)
 
         def get_displyed(response, extra_spaces=""):
@@ -1868,10 +1883,6 @@ class Pages:
 
             elif event == '-IN-':
                 text = values['-IN-'].lower()
-                if text == input_text:
-                    continue
-                else:
-                    input_text = text
 
                 executor.args = lambda: make_prediction(text, active_radio), '-THREAD DONE-'
                 executor.start()
@@ -1893,11 +1904,9 @@ class Pages:
                 make_prediction(values['-IN-'].lower(), active_radio)
                 update_prediction()
 
-            elif event in radid:
-                self.edittswidow['-IN-'].update("")
-                prediction_list, item_id, sel_item = [], "", 0
+            elif event in ("objects", "names", "models", "parts", "vendors", "serials"):
                 active_radio = event
-                update_prediction()
+                self.edittswidow.write_event_value('-IN-', values['-IN-'])
 
             elif event == '-EXTRAS-':
                 popup_input_text_with_hints('Изменение объекта', 'Изменение объекта')
