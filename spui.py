@@ -825,7 +825,12 @@ class Pages:
                 list_element.update(set_to_index=sel_item)
 
             elif event == '-BOX-' and values['-BOX-']:
-                self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                print(list_element.TKListbox.curselection()[0], sel_item, values["-BOX-"])
+                if sel_item == list_element.TKListbox.curselection()[0]:
+                    self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
+                    self.credentialswindow.write_event_value("Далее", values["-BOX-"])
+                else:
+                    sel_item = list_element.TKListbox.curselection()[0]
 
     def addtspage(self, master, headername, ts_id=(None, None)):
         global table1, table2
@@ -912,6 +917,7 @@ class Pages:
                 col_widths=col_widths,
                 font=fontmidlow,
                 justification='c',
+                enable_events=True,
                 key='-TABLE-'), ],
             [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="l", expand_x=True,
                      font=fontbutton),
@@ -936,6 +942,7 @@ class Pages:
 
         table = self.addtswindow['-TABLE-']
         table_widget = table.Widget
+        table_selected = 0
 
         displaycolumns = deepcopy(headings)
         displaycolumns.remove('Объект')
@@ -1264,6 +1271,12 @@ class Pages:
                     self.addtswindow["part"].update("б/н", disabled=True)
                 else:
                     self.addtswindow["part"].update("", disabled=False)
+
+            elif event == "-TABLE-" and values["-TABLE-"]:
+                if table_selected == int(values["-TABLE-"][0]):
+                    self.addtswindow.write_event_value("Редактировать", table_selected)
+                else:
+                    table_selected = int(values["-TABLE-"][0])
 
             elif event == "_SAVE_":
                 if values['name'] or values['model'] or values['part'] or values['vendor']:
