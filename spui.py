@@ -825,7 +825,6 @@ class Pages:
                 list_element.update(set_to_index=sel_item)
 
             elif event == '-BOX-' and values['-BOX-']:
-                print(list_element.TKListbox.curselection()[0], sel_item, values["-BOX-"])
                 if sel_item == list_element.TKListbox.curselection()[0]:
                     self.credentialswindow['-OBJECT-'].update(value=values['-BOX-'][0])
                     self.credentialswindow.write_event_value("Далее", values["-BOX-"])
