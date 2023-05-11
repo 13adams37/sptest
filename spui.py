@@ -12,7 +12,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.5"
+__version__ = "0.4.6"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -24,6 +24,8 @@ fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
+stop_animated_thread, animated_thread_work = 0, 0
+serial_1, serial_2 = 0, 0
 
 find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
 path_to_icon = path.abspath(path.join(find_dir, 'favicon.ico'))
@@ -59,11 +61,34 @@ def _onKeyRelease(event):
         event.widget.event_generate("<<MyClear>>")
 
 
+def start_word_export(objects, conclusion_data, export_path, object_name):
+    global serial_1, serial_2, stop_animated_thread, animated_thread_work
+    child_conn, parent_conn = multiprocessing.Pipe()
+    MSWord.main_docs_dict, processes = {}, []
+    processor_args = [
+        ('act_table', objects, child_conn, [export_path, object_name]),
+        ('conclusion_table', conclusion_data, child_conn, [export_path, object_name]),
+        ('methods_table', objects, child_conn, [export_path, object_name]),
+        ('ims_table', objects, child_conn, [export_path, object_name])
+    ]
+
+    for arg in processor_args:
+        p = multiprocessing.Process(target=MSWord.processes_runner, args=arg, daemon=False)
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+    serial_1, serial_2 = parent_conn.recv()
+    stop_animated_thread, animated_thread_work = 1, 0
+
+
 def popup_yes(main_text='Заглушка'):
     layout = [[
         sg.Column([
             [sg.T("         ")],
-            [sg.T(f"{main_text}", font=fontbig)],
+            [sg.T(f"{main_text}", font=fontbig, justification='c')],
         ], justification="c", element_justification="c")
     ], [
         sg.Column([
@@ -118,7 +143,6 @@ def popup_yes_no(main_text='Заглушка'):
         sg.Column([
             [sg.T("         ")],
             [sg.T(f"{main_text}", font=fontbig)],
-            # [sg.T(f"{main_text}", font=('Consolas', 18))],
         ], justification="c", element_justification="c")
     ], [
         sg.Column([
@@ -1950,13 +1974,26 @@ class Pages:
         list_element.TKListbox.configure(activestyle='none')
         prediction_list, input_text, sel_item = [], "", 0
         choices = sorted(baza.get_unique_index_names('objects'))
+        global serial_1, serial_2, stop_animated_thread, animated_thread_work
 
         while True:
-            event, values = self.exportwordwindow.read()
+            event, values = self.exportwordwindow.read(timeout=100)
 
             if event == "-CLOSE-" or event == sg.WIN_CLOSED:
+                sg.popup_animated(None)
                 self.exportwordwindow.close()
                 break
+
+            elif animated_thread_work:
+                sg.popup_animated(sg.DEFAULT_BASE64_LOADING_GIF, background_color='white', transparent_color='white',
+                                  grab_anywhere=False, time_between_frames=100)
+
+            elif stop_animated_thread:
+                animated_thread_work, stop_animated_thread = 0, 0
+                sg.popup_animated(None)
+                popup_yes(f'{values["-IN-"]} экспортирован в Word.\n'
+                          f'СЗЗ 1 = {serial_1}\n'f'СЗЗ 2 = {serial_2}\n')
+                self.exportwordwindow.enable()
 
             elif event.startswith('Escape'):
                 self.exportwordwindow['-IN-'].update('')
@@ -2045,28 +2082,10 @@ class Pages:
                     if not export_path or export_path is None:
                         continue
 
-                    child_conn, parent_conn = multiprocessing.Pipe()
-                    MSWord.main_docs_dict, processes = {}, []
-                    processor_args = [
-                        ('act_table', objects, child_conn, [export_path, values['-IN-']]),
-                        ('conclusion_table', conclusion_data, child_conn, [export_path, values['-IN-']]),
-                        ('methods_table', objects, child_conn, [export_path, values['-IN-']]),
-                        ('ims_table', objects, child_conn, [export_path, values['-IN-']])
-                    ]
-
-                    for arg in processor_args:
-                        p = multiprocessing.Process(target=MSWord.processes_runner, args=arg, daemon=False)
-                        processes.append(p)
-                        p.start()
-
-                    for p in processes:
-                        p.join()
-
-                    serial_1, serial_2 = parent_conn.recv()
-
-                    sg.popup_no_frame(f'"{values["-IN-"]}" экспортирован в Word.', auto_close_duration=1,
-                                      auto_close=True, font=fontbig, button_type=5)
-                    popup_yes(f'СЗЗ 1 = {serial_1}\n'f'СЗЗ 2 = {serial_2}\n')
+                    self.exportwordwindow.disable()
+                    animated_thread_work = 1
+                    threading.Thread(target=start_word_export, daemon=True,
+                                     args=(objects, conclusion_data, export_path, values['-IN-'])).start()
 
             elif event == "-METHODS-":
                 self.exportwordwindow.close()
