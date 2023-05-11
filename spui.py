@@ -24,7 +24,7 @@ fontmid = ("Arial Baltic", 18)
 fontmidlow = ("Arial Baltic", 16)
 char_width = sg.Text.char_width_in_pixels(fontmidlow)
 char_width_mid = sg.Text.char_width_in_pixels(fontmid)
-stop_animated_thread, animated_thread_work = 0, 0
+stop_animated_thread, animated_thread_work = "", 0
 serial_1, serial_2 = 0, 0
 
 find_dir = getattr(sys, '_MEIPASS', path.abspath(path.dirname(__file__)))
@@ -81,7 +81,7 @@ def start_word_export(objects, conclusion_data, export_path, object_name):
         p.join()
 
     serial_1, serial_2 = parent_conn.recv()
-    stop_animated_thread, animated_thread_work = 1, 0
+    stop_animated_thread, animated_thread_work = object_name, 0
 
 
 def popup_yes(main_text='Заглушка'):
@@ -1984,17 +1984,6 @@ class Pages:
                 self.exportwordwindow.close()
                 break
 
-            elif animated_thread_work:
-                sg.popup_animated(sg.DEFAULT_BASE64_LOADING_GIF, background_color='white', transparent_color='white',
-                                  grab_anywhere=False, time_between_frames=100)
-
-            elif stop_animated_thread:
-                animated_thread_work, stop_animated_thread = 0, 0
-                sg.popup_animated(None)
-                popup_yes(f'{values["-IN-"]} экспортирован в Word.\n'
-                          f'СЗЗ 1 = {serial_1}\n'f'СЗЗ 2 = {serial_2}\n')
-                self.exportwordwindow.enable()
-
             elif event.startswith('Escape'):
                 self.exportwordwindow['-IN-'].update('')
 
@@ -2053,6 +2042,10 @@ class Pages:
                                 break
                         return items
 
+                if animated_thread_work:
+                    popup_yes(f"Дождитесь завершения экспорта.")
+                    continue
+
                 if baza.search_if_exists("$.object", values['-IN-']):
                     level_status = False
                     if popup_yes_no("Экспортировать частично? \n Да - Частично, Нет - Все"):
@@ -2082,7 +2075,6 @@ class Pages:
                     if not export_path or export_path is None:
                         continue
 
-                    self.exportwordwindow.disable()
                     animated_thread_work = 1
                     threading.Thread(target=start_word_export, daemon=True,
                                      args=(objects, conclusion_data, export_path, values['-IN-'])).start()
@@ -2090,6 +2082,16 @@ class Pages:
             elif event == "-METHODS-":
                 self.exportwordwindow.close()
                 self.methods_page()
+
+            elif animated_thread_work:
+                sg.popup_animated(sg.DEFAULT_BASE64_LOADING_GIF, background_color='white',
+                                  transparent_color='white', time_between_frames=100)
+
+            elif stop_animated_thread:
+                sg.popup_animated(None)
+                popup_yes(f'{stop_animated_thread} экспортирован в Word.\n'
+                          f'СЗЗ 1 = {serial_1}\n'f'СЗЗ 2 = {serial_2}\n')
+                animated_thread_work, stop_animated_thread = 0, ""
 
         self.exportwordwindow.close()
 
