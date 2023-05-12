@@ -965,7 +965,7 @@ class Pages:
 
         table = self.addtswindow['-TABLE-']
         table_widget = table.Widget
-        table_selected = 0
+        table_selected = -1
 
         displaycolumns = deepcopy(headings)
         displaycolumns.remove('Объект')
@@ -1086,9 +1086,10 @@ class Pages:
                     pass
                 try:
                     if not self.addts_window_saved:
-                        if master == 'editor' or master == 'slave':
+                        if master == 'slave' or master == 'editor':
                             if not self.tsdata == self.get_tsvalues(values):  # is not changed in edit
                                 window_is_saved = False
+                        if master == 'editor':
                             if not ts_id[1] and not self.tsdata == self.dict_2_list_no_author(baza.get_by_id(ts_id[0])):
                                 window_is_saved = False
                         if type(master) is bool and self.get_tsvalues(values) != [self.object, '', '', '', '', '', '',
@@ -1296,6 +1297,7 @@ class Pages:
             elif event == "-TABLE-" and values["-TABLE-"]:
                 if table_selected == int(values["-TABLE-"][0]):
                     self.addtswindow.write_event_value("Редактировать", table_selected)
+                    table_selected = -1
                 else:
                     table_selected = int(values["-TABLE-"][0])
 
