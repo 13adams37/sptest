@@ -1,306 +1,256 @@
 import re
 from copy import deepcopy
-
 import docx
+import db
 
 nonBreakSpace = u'\xa0'
+serial1_count, serial2_count, main_docs_dict = 0, 0, {}
 
 
-def row_count(obj):
-    length = 0
-    if type(obj) == list:
-        for element in obj:
-            length += 1
-            if len(element['table']):
-                length += len(element['table'])
-                if len(element['table']):
-                    for i in element['table']:
-                        length += len(i['table'])
-    return length
+def save_docx_dict(docs_dict, export_path, object_name, new_name=""):
+    for name, doc in dict(docs_dict).items():
+        try:
+            if new_name:
+                name = new_name + " копия"
+            doc.save(f"{export_path}"'/'f"{object_name} {name}.docx")
+        except PermissionError:
+            save_docx_dict(docs_dict, export_path, object_name, name)
+
+
+def processes_runner(method, args, conn, export_args):
+    eval(method)(args)
+    try:
+        conn.send(main_docs_dict.pop('serials'))
+    except KeyError:
+        pass
+    save_docx_dict(main_docs_dict, *export_args)
+    conn.close()
 
 
 def empty_serial(serial):
-    if not serial:
+    if not serial or serial == "0":
         return "–"
     else:
         return serial
 
 
-def editcell(table, r, c, text):
-    cell = table.cell(r, c)
-    cell.text = str(text)
-
-
-def prep(elmtor):
-    elmt = elmtor.copy()
-    if elmt['part'] not in ("", "б/н"):
-        elmt['part'] = f"№{nonBreakSpace}{elmt['part']}"
-    output = f"{elmt['name']} {elmt['vendor']} {elmt['model']} {elmt['part']}"
+def prepared_text_to_display(element_to_edit):
+    element = element_to_edit.copy()
+    if element['part'] not in ("", "б/н"):
+        element['part'] = f"№{nonBreakSpace}{element['part']}"
+    else:
+        element['part'] = f"б/н"
+    output = f"{element['name']} {element['vendor']} {element['model']} {element['part']}"
     return f"{re.sub(' +', ' ', output)}"
 
 
-class Word:
-    def __init__(self):
-        self.serial1_count = 0
-        self.serial2_count = 0
+def act_table(elements):
+    def fill_new_row_act(main_object, cnt):
+        cell = table.add_row().cells
+        cell[0].text = str(cnt)
+        cell[1].text = main_object['name']
+        cell[2].text = main_object['model']
+        cell[3].text = main_object['part'] if main_object['part'] else 'б/н'
+        cell[4].text = main_object['vendor']
+        cell[5].text = main_object['amount']
+        cell[6].text = empty_serial(main_object['serial1'])
+        cell[7].text = "УФ" if main_object['uv'] else empty_serial(main_object['serial2'])
+        cell[8].text = 'CC'
+        cell[9].text = '2'
 
-    def act_table(self, elements, output_name):
-        doc = docx.Document()
-        rows = row_count(elements)
-        table = doc.add_table(rows=rows, cols=10)
-        table.style = 'Table Grid'
+    doc = docx.Document()
+    table = doc.add_table(rows=0, cols=10)
+    table.style = 'Table Grid'
+    counter = 0
+    global main_docs_dict
 
-        row = -1
-        while row != rows or row <= rows:
-            counter = 0
-            for item in elements:
-                counter += 1
-                row += 1
-                editcell(table, row, 0, counter)
-                editcell(table, row, 1, item['name'])
-                editcell(table, row, 2, item['model'])
-                editcell(table, row, 3, item['part'])
-                editcell(table, row, 4, item['vendor'])
-                editcell(table, row, 5, item['amount'])
-                editcell(table, row, 6, empty_serial(item['serial1']))
+    for item in elements:
+        counter += 1
+        fill_new_row_act(item, counter)
 
-                if item['uv']:
-                    editcell(table, row, 7, "УФ")
-                else:
-                    editcell(table, row, 7, empty_serial(item['serial2']))
+        if item['table']:
+            for item1 in item['table']:
+                fill_new_row_act(item1, "")
 
-                editcell(table, row, 8, 'CC')
-                editcell(table, row, 9, '2')
+                if item1['table']:
+                    for item2 in item1['table']:
+                        fill_new_row_act(item2, "")
 
-                if item['table']:
-                    for item1 in item['table']:
-                        row = row + 1
-                        editcell(table, row, 1, item1['name'])
-                        editcell(table, row, 2, item1['model'])
-                        editcell(table, row, 3, item1['part'])
-                        editcell(table, row, 4, item1['vendor'])
-                        editcell(table, row, 5, item1['amount'])
-                        editcell(table, row, 6, empty_serial(item1['serial1']))
+    main_docs_dict["АКТ"] = doc
 
-                        if item1['uv']:
-                            editcell(table, row, 7, "УФ")
-                        else:
-                            editcell(table, row, 7, empty_serial(item1['serial2']))
 
-                        editcell(table, row, 8, 'CC')
-                        editcell(table, row, 9, '2')
+def conclusion_table(elements):
+    def fill_conclusion_new_row(main_object, cnt):
+        global serial1_count, serial2_count
+        cell = table.add_row().cells
+        cell[0].text = str(cnt)
+        cell[1].text = main_object['name']
+        cell[2].text = main_object['model']
+        cell[3].text = main_object['part']
+        cell[4].text = main_object['vendor']
+        cell[5].text = main_object['amount']
+        cell[6].text = empty_serial(main_object['serial1'])
+        serial1_count += 1 if main_object['serial1'] else 0
 
-                        if item1['table']:
-                            for item2 in item1['table']:
-                                row = row + 1
-                                editcell(table, row, 1, item2['name'])
-                                editcell(table, row, 2, item2['model'])
-                                editcell(table, row, 3, item2['part'])
-                                editcell(table, row, 4, item2['vendor'])
-                                editcell(table, row, 5, item2['amount'])
-                                editcell(table, row, 6, empty_serial(item2['serial1']))
+        if item['uv']:
+            cell[7].text = 'УФ'
+        else:
+            cell[7].text = empty_serial(main_object['serial2'])
 
-                                if item2['uv']:
-                                    editcell(table, row, 7, "УФ")
-                                else:
-                                    editcell(table, row, 7, empty_serial(item2['serial2']))
+        serial2_count += int(main_object['serial2']) if main_object['serial2'] else 0
 
-                                editcell(table, row, 8, 'CC')
-                                editcell(table, row, 9, '2')
-            break
-        doc.save(f'{output_name}.docx')
+    def fill_conclusion_by_row(main_object, cnt, row, this_serial_counter):
+        global serial1_count, serial2_count
+        cell = table.rows[row].cells
+        cell[0].text = str(cnt)
+        cell[1].text = main_object['name']
+        cell[2].text = main_object['model']
+        cell[3].text = main_object['part']
+        cell[4].text = main_object['vendor']
+        cell[5].text = main_object['amount']
+        cell[6].text = empty_serial(main_object['serial1'])
+        serial1_count += 1 if main_object['serial1'] else 0
 
-    def methods_table(self, elements, output_name):
-        doc = docx.Document()
-        rows = row_count(elements)
-        table = doc.add_table(rows=rows, cols=4)
-        table.style = 'Table Grid'
-        row = -1
+        if item['uv'] and not this_serial_counter:
+            cell[7].text = 'УФ'
+        else:
+            cell[7].text = empty_serial(this_serial_counter)
 
-        while row != rows or row <= rows:
-            counter = 0
-            for item in elements:
-                subcount = 0
-                counter += 1
-                row += 1
-                editcell(table, row, 0, counter)
-                editcell(table, row, 1, prep(item))
+    doc = docx.Document()
+    table = doc.add_table(rows=0, cols=8)
+    table.style = 'Table Grid'
+    current_row = -1
+    global serial1_count, serial2_count, main_docs_dict
+    serial1_count = 0
+    serial2_count = 0
 
-                if item['table']:
-                    for item1 in item['table']:
-                        subsubcount = 0
-                        subcount += 1
-                        row += 1
-                        editcell(table, row, 0, f"{counter}.{subcount}")
-                        editcell(table, row, 1, prep(item1))
+    for counter_l1, item in enumerate(elements, start=1):
+        serial_counter = 0
+        table.add_row()
+        current_row += 1
+        l1_row_to_fill = deepcopy(current_row)
 
-                        if item1['table']:
-                            for item2 in item1['table']:
-                                subsubcount += 1
-                                row += 1
-                                editcell(table, row, 0, f"{counter}.{subcount}.{subsubcount}")
-                                editcell(table, row, 1, prep(item2))
-            break
-        doc.save(f'{output_name}.docx')
-
-    def conclusion_table(self, elements, output_name):
-        doc = docx.Document()
-        rows = row_count(elements)
-        table = doc.add_table(rows=rows, cols=8)
-        table.style = 'Table Grid'
-        row = -1
-        self.serial1_count = 0
-        self.serial2_count = 0
-
-        while row != rows or row <= rows:
-            counter = 0
-            for item in elements:
-                serialscounter = 0
-                counter += 1
-                row += 1
-                object_row = deepcopy(row)
-                editcell(table, row, 0, counter)
-                editcell(table, row, 1, item['name'])
-                editcell(table, row, 2, item['model'])
-                editcell(table, row, 3, item['part'])
-                editcell(table, row, 4, item['vendor'])
-                editcell(table, row, 5, item['amount'])
-                editcell(table, row, 6, empty_serial(item['serial1']))
-
-                self.serial1_count += 1 if item['serial1'] else 0
-
-                if item['serial2']:
-                    serialscounter += int(item['serial2'])
-
-                if item['table']:
-                    subcounter = 0
-                    for item1 in item['table']:
-                        try:
-                            if item1['selected']:
-                                subcounter += 1
-                                row += 1
-                                item_row = deepcopy(row)
-                                level2serial = 0
-
-                                editcell(table, row, 0, f"{counter}.{subcounter}")
-                                editcell(table, row, 1, item1['name'])
-                                editcell(table, row, 2, item1['model'])
-                                editcell(table, row, 3, item1['part'])
-                                editcell(table, row, 4, item1['vendor'])
-                                editcell(table, row, 5, item1['amount'])
-                                editcell(table, row, 6, empty_serial(item1['serial1']))
-
-                                if item1['table']:
-                                    subsubcount = 0
-                                    for it2 in item1['table']:
-                                        try:
-                                            if it2['selected']:
-                                                subsubcount += 1
-                                                row += 1
-                                                editcell(table, row, 0, f"{counter}.{subcounter}.{subsubcount}")
-                                                editcell(table, row, 1, it2['name'])
-                                                editcell(table, row, 2, it2['model'])
-                                                editcell(table, row, 3, it2['part'])
-                                                editcell(table, row, 4, it2['vendor'])
-                                                editcell(table, row, 5, it2['amount'])
-                                                editcell(table, row, 6, empty_serial(it2['serial1']))
-
-                                                if it2['serial2'] and not it2['uv']:
-                                                    editcell(table, row, 7, int(it2['serial2']))
-                                                    self.serial2_count += int(it2['serial2'])
-                                                elif it2['uv']:
-                                                    editcell(table, row, 7, "УФ")
-
-                                        except KeyError:
-                                            if it2['serial2'] and not it2['uv']:
-                                                level2serial += int(it2['serial2'])
-
-                                if item1['serial2'] and not item1['uv']:
-                                    editcell(table, item_row, 7, int(item1['serial2']) + int(level2serial))
-                                    self.serial2_count += int(item1['serial2']) + int(level2serial)
-                                elif item1['uv']:
-                                    editcell(table, item_row, 7, "УФ")
-
-                                self.serial1_count += 1 if item1['serial1'] else 0
-                                continue  # ?????
-                        except KeyError:
-                            if item1['serial2']:
-                                serialscounter += int(item1['serial2'])
+        if item['table']:
+            counter_l2 = 0
+            for item1 in item['table']:
+                try:
+                    if item1['selected']:
+                        counter_l2 += 1
+                        l2_serial = 0
+                        table.add_row()
+                        current_row += 1
+                        l2_row_to_fill = deepcopy(current_row)
 
                         if item1['table']:
-                            subsubcounter = 0
-                            for item2 in item1['table']:
+                            subcount_l2 = 0
+                            for sel_item2 in item1['table']:
                                 try:
-                                    if item2['selected']:
-                                        subsubcounter += 1
-                                        row += 1
-                                        if subcounter > 0:
-                                            editcell(table, row, 0, f"{counter}.{subcounter}.{subsubcounter}")
-                                        else:
-                                            editcell(table, row, 0, f"{counter}.{subsubcounter}")
-                                        editcell(table, row, 1, item2['name'])
-                                        editcell(table, row, 2, item2['model'])
-                                        editcell(table, row, 3, item2['part'])
-                                        editcell(table, row, 4, item2['vendor'])
-                                        editcell(table, row, 5, item2['amount'])
-                                        editcell(table, row, 6, empty_serial(item2['serial1']))
-
-                                        if item2['serial2'] and not item2['uv']:
-                                            editcell(table, row, 7, int(item2['serial2']))
-                                            self.serial2_count += int(item2['serial2'])
-                                        else:
-                                            editcell(table, row, 7, "ERROR")
-
-                                        self.serial1_count += 1 if item2['serial1'] else 0
+                                    if sel_item2['selected']:
+                                        subcount_l2 += 1
+                                        current_row += 1
+                                        fill_conclusion_new_row(sel_item2,
+                                                                f"{counter_l1}.{counter_l2}.{subcount_l2}")
                                 except KeyError:
-                                    if item2['serial2']:
-                                        serialscounter += int(item2['serial2'])
+                                    if sel_item2['serial2'] and not sel_item2['uv']:
+                                        l2_serial += int(sel_item2['serial2'])
 
-                editcell(table, object_row, 7, serialscounter)
-                if item['uv'] and not serialscounter:
-                    editcell(table, row, 7, "УФ")
-                elif not item['uv'] and serialscounter and item['serial2']:
-                    # editcell(table, row, 7, empty_serial(item['serial2']))
-                    editcell(table, object_row, 7, serialscounter)
-                self.serial2_count += serialscounter
-            break
-        doc.save(f'{output_name}.docx')
+                        l2_serial += int(item1['serial2']) if item1['serial2'] != "УФ" and item1['serial2'] else 0
+                        fill_conclusion_by_row(item1, f"{counter_l1}.{counter_l2}", l2_row_to_fill, str(l2_serial))
+                        serial2_count += l2_serial
+                        continue
 
-    def ims_table(self, elements, output_name):
-        doc = docx.Document()
-        rows = row_count(elements)
-        table = doc.add_table(rows=rows, cols=5)
-        table.style = 'Table Grid'
-        row = -1
+                except KeyError:
+                    if item1['serial2']:
+                        serial_counter += int(item1['serial2'])
 
-        while row != rows or row <= rows:
-            counter = 0
-            for item in elements:
-                row += 1
-                counter += 1
-                subcount = 0
-                editcell(table, row, 0, counter)
-                editcell(table, row, 1, prep(item))
-                editcell(table, row, 3, item['rgg'])
-                editcell(table, row, 4, item['rggpp'])
+                if item1['table']:
+                    counter_l3 = 0
+                    for item2 in item1['table']:
+                        try:
+                            if item2['selected']:
+                                counter_l3 += 1
+                                current_row += 1
+                                fill_conclusion_new_row(item2,
+                                                        f"{counter_l1}.{counter_l2}.{counter_l3}"
+                                                        if counter_l2 > 0 else f"{counter_l1}.{counter_l3}")
 
-                if item['table']:
-                    for item1 in item['table']:
-                        subsubcount = 0
-                        row += 1
-                        subcount += 1
-                        editcell(table, row, 0, f"{counter}.{subcount}")
-                        editcell(table, row, 1, prep(item1))
-                        editcell(table, row, 3, item1['rgg'])
-                        editcell(table, row, 4, item1['rggpp'])
+                        except KeyError:
+                            if item2['serial2']:
+                                serial_counter += int(item2['serial2'])
 
-                        if item1['table']:
-                            for item2 in item1['table']:
-                                row += 1
-                                subsubcount += 1
-                                editcell(table, row, 0, f"{counter}.{subcount}.{subsubcount}")
-                                editcell(table, row, 1, prep(item2))
-                                editcell(table, row, 3, item2['rgg'])
-                                editcell(table, row, 4, item2['rggpp'])
-            break
-        doc.save(f'{output_name}.docx')
+        serial_counter += int(item['serial2']) if item['serial2'] != "УФ" and item['serial2'] else 0
+        fill_conclusion_by_row(item, counter_l1, l1_row_to_fill, str(serial_counter))
+        serial2_count += serial_counter
+
+    main_docs_dict.update({"serials": (serial1_count, serial2_count)})
+    main_docs_dict['ЗАКЛЮЧЕНИЕ'] = doc
+
+
+def methods_table(elements):
+    def fill_new_row_methods(main_object, cnt, method, method_author):
+        cell = table.add_row().cells
+        cell[0].text = str(cnt)
+        cell[1].text = prepared_text_to_display(main_object)
+        cell[2].text = str(method)
+        cell[3].text = str(method_author)
+
+    def get_method(name):
+        for method_id in iter(db.methods_db):
+            method_content = db.methods_db.get(method_id)
+            if method_content['type'] == 'По содержанию':
+                if name.lower().__contains__(method_content['name'].lower()):
+                    return method_content['methods']
+            else:
+                if method_content['name'].lower() == name:
+                    return method_content['methods']
+        return ''
+
+    doc = docx.Document()
+    table = doc.add_table(rows=0, cols=4)
+    table.style = 'Table Grid'
+    global main_docs_dict
+
+    for counter_l1, item in enumerate(elements, start=1):
+        try:
+            author = item['author']
+        except KeyError:
+            author = ""
+
+        fill_new_row_methods(item, f"{counter_l1}", get_method(item['name'].lower()), author)
+        if item['table']:
+            for counter_l2, item1 in enumerate(item['table'], start=1):
+                fill_new_row_methods(item1, f"{counter_l1}.{counter_l2}", get_method(item1['name'].lower()), author)
+
+                if item1['table']:
+                    for counter_l3, item2 in enumerate(item1['table'], start=1):
+                        fill_new_row_methods(item2, f"{counter_l1}.{counter_l2}.{counter_l3}",
+                                             get_method(item2['name'].lower()), author)
+
+    main_docs_dict['МЕТОДЫ'] = doc
+
+
+def ims_table(elements):
+    def fill_new_row_ims(main_object, cnt):
+        cell = table.add_row().cells
+        cell[0].text = str(cnt)
+        cell[1].text = prepared_text_to_display(main_object)
+        cell[3].text = main_object['rgg']
+        cell[4].text = main_object['rggpp']
+
+    doc = docx.Document()
+    table = doc.add_table(rows=0, cols=5)
+    table.style = 'Table Grid'
+    global main_docs_dict
+
+    for counter_l1, item in enumerate(elements, start=1):
+        fill_new_row_ims(item, f"{counter_l1}")
+
+        if item['table']:
+            for counter_l2, item1 in enumerate(item['table'], start=1):
+                fill_new_row_ims(item1, f"{counter_l1}.{counter_l2}")
+
+                if item1['table']:
+                    for counter_l3, item2 in enumerate(item1['table'], start=1):
+                        fill_new_row_ims(item2, f"{counter_l1}.{counter_l2}.{counter_l3}")
+
+    main_docs_dict['СПИСОК ИМС'] = doc
