@@ -12,7 +12,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.6"
+__version__ = "0.4.7"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -1792,6 +1792,9 @@ class Pages:
                 id_doc_list.append([doc_id, db.db[doc_id]])
             return id_doc_list
 
+        def sort_all_values(index_name):
+            return sorted(get_all_values(), key=lambda x: (x[1][index_name], x[1]['object'], x[1]['name']), reverse=False)
+
         def make_prediction(input_text, index_name='names'):
             prediction_list.clear()
             prediction_ids.clear()
@@ -1801,7 +1804,7 @@ class Pages:
 
             if input_text:
                 cnt = 0
-                id_doc_list = get_all_values()
+                id_doc_list = sort_all_values(index_name)
                 if self.search_type:
                     for content in id_doc_list:
                         if content[1][index_name].lower().__contains__(input_text) and content[0] != prev_id:
