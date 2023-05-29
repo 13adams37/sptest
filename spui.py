@@ -1781,39 +1781,49 @@ class Pages:
             list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
             self.edittswidow.Refresh()
 
-        def make_prediction(text, index_name='names'):
+        def get_all_values():
+            id_doc_list = []
+            ids_list = []
+            for element_id in db.db:
+                ids_list.append(element_id)
+            ids_list.remove('444')
+            ids_list.remove('1337')
+            for doc_id in ids_list:
+                id_doc_list.append([doc_id, db.db[doc_id]])
+            return id_doc_list
+
+        def make_prediction(input_text, index_name='names'):
             prediction_list.clear()
             prediction_ids.clear()
 
-            index = index_name
             index_name = 'serial1' if index_name == 'serials' else index_name[:-1]
             prev_id = ""
 
-            if text:
-                cnt = 0  # counter
-                index_values = sorted(list(db.db.get_index_values(index)), key=myFunc)
+            if input_text:
+                cnt = 0
+                id_doc_list = get_all_values()
                 if self.search_type:
-                    for content in index_values:
-                        if content[1].lower().__contains__(text) and content[0] != prev_id and content[0] != '444':
+                    for content in id_doc_list:
+                        if content[1][index_name].lower().__contains__(input_text) and content[0] != prev_id:
                             content_id = content[0]
                             prev_id = content_id
-                            main_content = db.db[content_id]
+                            main_content = content[1]
 
-                            if main_content[index_name].lower().__contains__(text):
+                            if main_content[index_name].lower().__contains__(input_text):
                                 prediction_list.append(get_displyed(main_content))
                                 prediction_ids.append(content_id)
                                 cnt += 1
 
                             if main_content['table']:
                                 for element_1 in main_content['table']:
-                                    if element_1[index_name].lower().__contains__(text):
+                                    if element_1[index_name].lower().__contains__(input_text):
                                         prediction_list.append(get_displyed(element_1, '  '))
                                         prediction_ids.append(content_id)
                                         cnt += 1
 
                                     if element_1['table']:
                                         for element_2 in element_1['table']:
-                                            if element_2[index_name].lower().__contains__(text):
+                                            if element_2[index_name].lower().__contains__(input_text):
                                                 prediction_list.append(get_displyed(element_2, '    '))
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
@@ -1824,27 +1834,27 @@ class Pages:
                                 break
 
                 else:
-                    for content in index_values:
-                        if content[1].lower().startswith(text) and content[0] != prev_id and content[0] != '444':
+                    for content in id_doc_list:
+                        if content[1][index_name].lower().startswith(input_text) and content[0] != prev_id:
                             content_id = content[0]
                             prev_id = content_id
-                            main_content = db.db[content_id]
+                            main_content = content[1]
 
-                            if main_content[index_name].lower().startswith(text):
+                            if main_content[index_name].lower().startswith(input_text):
                                 prediction_list.append(get_displyed(main_content))
                                 prediction_ids.append(content_id)
                                 cnt += 1
 
                             if main_content['table']:
                                 for element_1 in main_content['table']:
-                                    if element_1[index_name].lower().startswith(text):
+                                    if element_1[index_name].lower().startswith(input_text):
                                         prediction_list.append(get_displyed(element_1, '  '))
                                         prediction_ids.append(content_id)
                                         cnt += 1
 
                                     if element_1['table']:
                                         for element_2 in element_1['table']:
-                                            if element_2[index_name].lower().startswith(text):
+                                            if element_2[index_name].lower().startswith(input_text):
                                                 prediction_list.append(get_displyed(element_2, '    '))
                                                 prediction_ids.append(content_id)
                                                 cnt += 1
@@ -1853,6 +1863,81 @@ class Pages:
                                 pass
                             elif cnt >= self.prediction_len != 0:
                                 break
+
+        # def make_prediction(text, index_name='names'):
+        #     # print(get_all_values_by_index())
+        #     get_all_values_by_index()
+        #     prediction_list.clear()
+        #     prediction_ids.clear()
+        #
+        #     index = index_name
+        #     index_name = 'serial1' if index_name == 'serials' else index_name[:-1]
+        #     prev_id = ""
+        #
+        #     if text:
+        #         cnt = 0  # counter
+        #         index_values = sorted(list(db.db.get_index_values(index)), key=myFunc)
+        #         if self.search_type:
+        #             for content in index_values:
+        #                 if content[1].lower().__contains__(text) and content[0] != prev_id and content[0] != '444':
+        #                     content_id = content[0]
+        #                     prev_id = content_id
+        #                     main_content = db.db[content_id]
+        #
+        #                     if main_content[index_name].lower().__contains__(text):
+        #                         prediction_list.append(get_displyed(main_content))
+        #                         prediction_ids.append(content_id)
+        #                         cnt += 1
+        #
+        #                     if main_content['table']:
+        #                         for element_1 in main_content['table']:
+        #                             if element_1[index_name].lower().__contains__(text):
+        #                                 prediction_list.append(get_displyed(element_1, '  '))
+        #                                 prediction_ids.append(content_id)
+        #                                 cnt += 1
+        #
+        #                             if element_1['table']:
+        #                                 for element_2 in element_1['table']:
+        #                                     if element_2[index_name].lower().__contains__(text):
+        #                                         prediction_list.append(get_displyed(element_2, '    '))
+        #                                         prediction_ids.append(content_id)
+        #                                         cnt += 1
+        #
+        #                     if self.prediction_len == 0:
+        #                         pass
+        #                     elif cnt >= self.prediction_len != 0:
+        #                         break
+        #
+        #         else:
+        #             for content in index_values:
+        #                 if content[1].lower().startswith(text) and content[0] != prev_id and content[0] != '444':
+        #                     content_id = content[0]
+        #                     prev_id = content_id
+        #                     main_content = db.db[content_id]
+        #
+        #                     if main_content[index_name].lower().startswith(text):
+        #                         prediction_list.append(get_displyed(main_content))
+        #                         prediction_ids.append(content_id)
+        #                         cnt += 1
+        #
+        #                     if main_content['table']:
+        #                         for element_1 in main_content['table']:
+        #                             if element_1[index_name].lower().startswith(text):
+        #                                 prediction_list.append(get_displyed(element_1, '  '))
+        #                                 prediction_ids.append(content_id)
+        #                                 cnt += 1
+        #
+        #                             if element_1['table']:
+        #                                 for element_2 in element_1['table']:
+        #                                     if element_2[index_name].lower().startswith(text):
+        #                                         prediction_list.append(get_displyed(element_2, '    '))
+        #                                         prediction_ids.append(content_id)
+        #                                         cnt += 1
+        #
+        #                     if self.prediction_len == 0:
+        #                         pass
+        #                     elif cnt >= self.prediction_len != 0:
+        #                         break
 
         def open_editwindow(it_id):
             if it_id:
