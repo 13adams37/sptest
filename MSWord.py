@@ -132,6 +132,7 @@ def conclusion_table(elements):
 
         if item['table']:
             counter_l2 = 0
+            counter_l3 = 0
             for item1 in item['table']:
                 try:
                     if item1['selected']:
@@ -142,14 +143,13 @@ def conclusion_table(elements):
                         l2_row_to_fill = deepcopy(current_row)
 
                         if item1['table']:
-                            subcount_l2 = 0
                             for sel_item2 in item1['table']:
                                 try:
                                     if sel_item2['selected']:
-                                        subcount_l2 += 1
+                                        counter_l3 += 1
                                         current_row += 1
                                         fill_conclusion_new_row(sel_item2,
-                                                                f"{counter_l1}.{counter_l2}.{subcount_l2}")
+                                                                f"{counter_l1}.{counter_l2}.{counter_l3}")
                                 except KeyError:
                                     if sel_item2['serial2'] and not sel_item2['uv']:
                                         l2_serial += int(sel_item2['serial2'])
@@ -164,15 +164,13 @@ def conclusion_table(elements):
                         serial_counter += int(item1['serial2'])
 
                 if item1['table']:
-                    counter_l3 = 0
                     for item2 in item1['table']:
                         try:
                             if item2['selected']:
-                                counter_l3 += 1
+                                counter_l2 += 1
                                 current_row += 1
                                 fill_conclusion_new_row(item2,
-                                                        f"{counter_l1}.{counter_l2}.{counter_l3}"
-                                                        if counter_l2 > 0 else f"{counter_l1}.{counter_l3}")
+                                                        f"{counter_l1}.{counter_l2}")
 
                         except KeyError:
                             if item2['serial2']:
