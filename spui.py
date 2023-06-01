@@ -1760,8 +1760,8 @@ class Pages:
         self.edittswidow['-IN-'].SetFocus(True)
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
-        prediction_list, prediction_ids, item_id, input_text, prev_name, sel_item, active_radio = \
-            [], [], "", "", "", 0, "objects"
+        prediction_list, prediction_ids, item_id, in_text, prev_name, sel_item, active_radio, last_text = \
+            [], [], "", "", "", 0, "objects", ""
         executor = DelayedExecution(func=self.edittswidow.start_thread)
 
         def get_displyed(response, extra_spaces=""):
@@ -1792,32 +1792,32 @@ class Pages:
         def sort_all_values(index_name):
             return sorted(get_all_values(), key=lambda x: (x[1][index_name], x[1]['object'], x[1]['name']), reverse=False)
 
-        def make_prediction(input_text, index_name='names'):
+        def make_prediction(prediction_text, index_name='names'):
             prediction_list.clear()
             prediction_ids.clear()
 
             index_name = 'serial1' if index_name == 'serials' else index_name[:-1]
 
-            if input_text:
+            if prediction_text:
                 cnt = 0
                 id_doc_list = sort_all_values(index_name)
                 if self.search_type:
                     for content in id_doc_list:
-                        if content[1][index_name].lower().__contains__(input_text):
+                        if content[1][index_name].lower().__contains__(prediction_text):
                             prediction_list.append(get_displyed(content[1]))
                             prediction_ids.append(content[0])
                             cnt += 1
 
                         if content[1]['table']:
                             for element_1 in content[1]['table']:
-                                if element_1[index_name].lower().__contains__(input_text):
+                                if element_1[index_name].lower().__contains__(prediction_text):
                                     prediction_list.append(get_displyed(element_1, '  '))
                                     prediction_ids.append(content[0])
                                     cnt += 1
 
                                 if element_1['table']:
                                     for element_2 in element_1['table']:
-                                        if element_2[index_name].lower().__contains__(input_text):
+                                        if element_2[index_name].lower().__contains__(prediction_text):
                                             prediction_list.append(get_displyed(element_2, '    '))
                                             prediction_ids.append(content[0])
                                             cnt += 1
@@ -1829,21 +1829,21 @@ class Pages:
 
                 else:
                     for content in id_doc_list:
-                        if content[1][index_name].lower().startswith(input_text):
+                        if content[1][index_name].lower().startswith(prediction_text):
                             prediction_list.append(get_displyed(content[1]))
                             prediction_ids.append(content[0])
                             cnt += 1
 
                         if content[1]['table']:
                             for element_1 in content[1]['table']:
-                                if element_1[index_name].lower().startswith(input_text):
+                                if element_1[index_name].lower().startswith(prediction_text):
                                     prediction_list.append(get_displyed(element_1, '  '))
                                     prediction_ids.append(content[0])
                                     cnt += 1
 
                                 if element_1['table']:
                                     for element_2 in element_1['table']:
-                                        if element_2[index_name].lower().startswith(input_text):
+                                        if element_2[index_name].lower().startswith(prediction_text):
                                             prediction_list.append(get_displyed(element_2, '    '))
                                             prediction_ids.append(content[0])
                                             cnt += 1
@@ -1869,6 +1869,7 @@ class Pages:
 
         while True:
             event, values = self.edittswidow.read()
+            print(event)
 
             if event == "-OPEN-" and values["-IN-"]:
                 if len(values['-BOX-']) > 0:
@@ -1906,14 +1907,17 @@ class Pages:
                     update_prediction()
 
             elif event == '-IN-':
-                text = values['-IN-'].lower()
+                in_text = values['-IN-'].lower()
 
-                executor.args = lambda: make_prediction(text, active_radio), '-THREAD DONE-'
-                executor.start()
+                if in_text != last_text:
+                    executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD DONE-'
+                    executor.start()
 
             elif event == '-THREAD DONE-':
-                sel_item = 0
-                update_prediction()
+                if in_text != last_text:
+                    sel_item = 0
+                    last_text = in_text
+                    update_prediction()
 
             elif event == '-SHOWALL-':
                 output_string = ""
