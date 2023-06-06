@@ -1760,8 +1760,8 @@ class Pages:
         self.edittswidow['-IN-'].SetFocus(True)
         list_element: sg.Listbox = self.edittswidow.Element('-BOX-')
         list_element.TKListbox.configure(activestyle='none')
-        prediction_list, prediction_ids, item_id, in_text, prev_name, sel_item, active_radio, last_text = \
-            [], [], "", "", "", 0, "objects", ""
+        prediction_list, prediction_ids, in_text, prev_name, sel_item, active_radio, last_text = \
+            [], [], "", "", 0, "objects", ""
         executor = DelayedExecution(func=self.edittswidow.start_thread)
 
         def get_displyed(response, extra_spaces=""):
@@ -1773,10 +1773,9 @@ class Pages:
                 output = f'{response["object"]} {response["name"]} {response["model"]} {response["part"]} {response["vendor"]} {response["serial1"]} {author}'
                 return f"{extra_spaces}{re.sub(' +', ' ', output)}"
 
-        def update_prediction():
-            list_element.update(values=prediction_list)
-            list_element.update(set_to_index=sel_item, scroll_to_index=sel_item)
-            self.edittswidow.Refresh()
+        def update_prediction(list_to_update, sel_item_to_update):
+            list_element.update(set_to_index=sel_item_to_update, scroll_to_index=sel_item_to_update, values=list_to_update)
+            self.edittswidow['-IN-'].SetFocus(True)
 
         def get_all_values():
             id_doc_list = []
@@ -1869,14 +1868,12 @@ class Pages:
 
         while True:
             event, values = self.edittswidow.read()
-            print(event)
 
             if event == "-OPEN-" and values["-IN-"]:
                 if len(values['-BOX-']) > 0:
-                    item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
-                    open_editwindow(item_id)
+                    open_editwindow(prediction_ids[sel_item])
                     make_prediction(values['-IN-'].lower(), active_radio)
-                    update_prediction()
+                    update_prediction(prediction_list, sel_item)
 
             elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.edittswidow.close()
@@ -1885,8 +1882,8 @@ class Pages:
             elif event.startswith('Escape'):
                 if values['-IN-']:
                     self.edittswidow['-IN-'].update('')
-                    prediction_list, item_id, sel_item = [], "", 0
-                    update_prediction()
+                    prediction_list, sel_item, last_text = [], 0, ""
+                    update_prediction(prediction_list, sel_item)
                 else:
                     self.edittswidow.close()
                     break
@@ -1901,23 +1898,21 @@ class Pages:
 
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
-                    item_id = prediction_ids[list_element.TKListbox.curselection()[0]]
-                    open_editwindow(item_id)
+                    open_editwindow(prediction_ids[sel_item])
                     make_prediction(values['-IN-'].lower(), active_radio)
-                    update_prediction()
+                    update_prediction(prediction_list, sel_item)
 
             elif event == '-IN-':
                 in_text = values['-IN-'].lower()
 
                 if in_text != last_text:
+                    last_text = in_text
                     executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD DONE-'
                     executor.start()
 
             elif event == '-THREAD DONE-':
-                if in_text != last_text:
-                    sel_item = 0
-                    last_text = in_text
-                    update_prediction()
+                sel_item = 0
+                update_prediction(prediction_list, sel_item)
 
             elif event == '-SHOWALL-':
                 output_string = ""
@@ -1926,22 +1921,25 @@ class Pages:
                 sg.popup_scrolled(output_string, font=fontbig, title='Все объекты', no_sizegrip=True, size=(30, 20))
 
             elif event == '-BOX-' and values['-BOX-']:
-                sel_item = list_element.TKListbox.curselection()[0]
-                item_id = prediction_ids[sel_item]
-                open_editwindow(item_id)
-                make_prediction(values['-IN-'].lower(), active_radio)
-                update_prediction()
+                if sel_item == list_element.TKListbox.curselection()[0]:
+                    sel_item = list_element.TKListbox.curselection()[0]
+                    open_editwindow(prediction_ids[sel_item])
+                    make_prediction(values['-IN-'].lower(), active_radio)
+                    update_prediction(prediction_list, sel_item)
+                else:
+                    sel_item = list_element.TKListbox.curselection()[0]
 
             elif event in ("objects", "names", "models", "parts", "vendors", "serials"):
                 active_radio = event
+                last_text = ""
                 self.edittswidow.write_event_value('-IN-', values['-IN-'])
 
             elif event == '-EXTRAS-':
                 popup_input_text_with_hints('Изменение объекта', 'Изменение объекта')
 
                 self.edittswidow['-IN-'].update("")
-                prediction_list, item_id, sel_item = [], "", 0
-                update_prediction()
+                prediction_list, sel_item, last_text = [], 0, ""
+                update_prediction(prediction_list, sel_item)
 
         self.edittswidow.close()
 
