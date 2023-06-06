@@ -268,8 +268,10 @@ def real_popup_input_text_with_hints(headername, middle_text="",
             ], justification="c", element_justification="c")
         ],
         [
-            sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                    enable_events=True, expand_x=True),
+            sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                               button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                               mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                               font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
             sg.Button('Выбрать', key="-SELECT-", font=fontbutton),
         ]
     ]
@@ -370,8 +372,10 @@ def popup_input_text_with_hints(headername, middle_text="Удаление и и�
             ], justification="c", element_justification="c")
         ],
         [
-            sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                    enable_events=True, expand_x=True),
+            sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                               button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                               mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                               font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
             sg.Button('Удалить', key="-DELETE-", font=fontbutton),
             sg.Button("Переименовать", key="-RENAME-", font=fontbutton),
         ]
@@ -693,8 +697,12 @@ class Pages:
                              s=(40, 0), justification='c')
             ],
             [
-                sg.Text('Назад', key="-CLOSE-", enable_events=True, justification="l", expand_x=True,
-                        font=fontbutton)
+                sg.Col([
+                    [sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                               button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                               mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                               font=fontbutton, border_width=0),
+                     ]], justification='l')
             ]
         ]
         self.settingswindow = sg.Window(f'Настройки. Версия {__version__}', settingslayout, resizable=True,
@@ -942,15 +950,19 @@ class Pages:
                 justification='c',
                 enable_events=True,
                 key='-TABLE-'), ],
-            [sg.Text('Назад', key="-CloseAddTsPage-", enable_events=True, justification="l", expand_x=True,
-                     font=fontbutton),
-             sg.Button("Копировать", k="-COPY-", font=fontbutton),
-             sg.Button("Вставить", k="-PASTE-", font=fontbutton),
-             sg.Text("", pad=(200, 0)),
-             sg.Button("Удалить из БД", k="bd_delete", font=fontbutton, visible=False),
-             sg.Button("Сохранить", k="_SAVE_", font=fontbutton),
-             sg.Button("Очистить", font=fontbutton),
-             ]
+            [
+                sg.Col([[sg.Button('Назад', key="-CloseAddTsPage-", enable_events=True,
+                                   button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                   mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                   font=fontbutton, border_width=0), ]], justification='l'),
+                sg.Text("", expand_x=True),
+                sg.Button("Копировать", k="-COPY-", font=fontbutton),
+                sg.Button("Вставить", k="-PASTE-", font=fontbutton),
+                sg.Text("", expand_x=True),
+                sg.Button("Удалить из БД", k="bd_delete", font=fontbutton, visible=False),
+                sg.Button("Сохранить", k="_SAVE_", font=fontbutton),
+                sg.Button("Очистить", font=fontbutton),
+            ]
         ]
         self.addtswindow = sg.Window(headername, addtspage, resizable=True, return_keyboard_events=True,
                                      element_justification="").Finalize()
@@ -1743,8 +1755,10 @@ class Pages:
                 ], justification="c", element_justification="c")
             ],
             [
-                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                        enable_events=True, expand_x=True),
+                sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                                   button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                   mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                   font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
                 sg.Button('Объекты', key="-SHOWALL-", font=fontbutton),
                 sg.Button('Дополнительно', key="-EXTRAS-", font=fontbutton),
                 sg.Button("Открыть", key="-OPEN-", font=fontbutton),
@@ -1774,7 +1788,8 @@ class Pages:
                 return f"{extra_spaces}{re.sub(' +', ' ', output)}"
 
         def update_prediction(list_to_update, sel_item_to_update):
-            list_element.update(set_to_index=sel_item_to_update, scroll_to_index=sel_item_to_update, values=list_to_update)
+            list_element.update(set_to_index=sel_item_to_update, scroll_to_index=sel_item_to_update,
+                                values=list_to_update)
             self.edittswidow['-IN-'].SetFocus(True)
 
         def get_all_values():
@@ -1789,7 +1804,8 @@ class Pages:
             return id_doc_list
 
         def sort_all_values(index_name):
-            return sorted(get_all_values(), key=lambda x: (x[1][index_name], x[1]['object'], x[1]['name']), reverse=False)
+            return sorted(get_all_values(), key=lambda x: (x[1][index_name], x[1]['object'], x[1]['name']),
+                          reverse=False)
 
         def make_prediction(prediction_text, index_name='names'):
             prediction_list.clear()
@@ -1959,8 +1975,10 @@ class Pages:
                 ], justification="c", element_justification="c")
             ],
             [
-                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                        enable_events=True, expand_x=True),
+                sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                                   button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                   mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                   font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
                 sg.Button("Методы", key="-METHODS-", font=fontbutton),
                 sg.Button("Экспортировать", key="-OPEN-", font=fontbutton),
             ]
@@ -2114,8 +2132,10 @@ class Pages:
                 ], justification="c", element_justification="c")
             ],
             [
-                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                        enable_events=True, expand_x=True),
+                sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                                   button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                   mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                   font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
                 sg.Button("Импортировать", key="-IMPORT-", font=fontbutton),
                 sg.Button("Экспортировать", key="-EXPORT-", font=fontbutton),
             ]
@@ -2572,8 +2592,10 @@ class Pages:
                 ], justification="c", element_justification="c")
             ],
             [
-                sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                        enable_events=True, expand_x=True),
+                sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                                   button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                   mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                   font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
                 sg.Button("Сортировка по алфавиту", key="-ALPHABET-", font=fontbutton),
                 sg.Button("Сохранить", key="-SAVE-", font=fontbutton),
             ]
@@ -2675,8 +2697,10 @@ class Pages:
                             ], ], justification="c", element_justification="c")
                     ],
                     [
-                        sg.Text('Назад', key="-CLOSE-", font=fontbutton, justification='l',
-                                enable_events=True, expand_x=True),
+                        sg.Col([[sg.Button('Назад', key="-CLOSE-", enable_events=True,
+                                           button_color=(sg.theme_text_color(), sg.theme_background_color()),
+                                           mouseover_colors=(sg.theme_text_color(), sg.theme_background_color()),
+                                           font=fontbutton, border_width=0), ]], justification='l', expand_x=True),
                         sg.Button('Сохранить', key="-SAVE-", font=fontbutton),
                     ]
                 ]
