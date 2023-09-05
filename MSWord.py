@@ -81,7 +81,7 @@ def act_table(elements):
 
 def conclusion_table(elements):
     def fill_conclusion_new_row(main_object, cnt):
-        global serial1_count, serial2_count
+        global serial2_count
         cell = table.add_row().cells
         cell[0].text = str(cnt)
         cell[1].text = main_object['name']
@@ -90,7 +90,6 @@ def conclusion_table(elements):
         cell[4].text = main_object['vendor']
         cell[5].text = main_object['amount']
         cell[6].text = empty_serial(main_object['serial1'])
-        serial1_count += 1 if main_object['serial1'] else 0
 
         if item['uv']:
             cell[7].text = 'УФ'
@@ -100,7 +99,7 @@ def conclusion_table(elements):
         serial2_count += int(main_object['serial2']) if main_object['serial2'] else 0
 
     def fill_conclusion_by_row(main_object, cnt, row, this_serial_counter):
-        global serial1_count, serial2_count
+        global serial1_count
         cell = table.rows[row].cells
         cell[0].text = str(cnt)
         cell[1].text = main_object['name']
@@ -153,6 +152,8 @@ def conclusion_table(elements):
                                 except KeyError:
                                     if sel_item2['serial2'] and not sel_item2['uv']:
                                         l2_serial += int(sel_item2['serial2'])
+                                finally:
+                                    serial1_count += 1 if sel_item2['serial1'] else 0
 
                         l2_serial += int(item1['serial2']) if item1['serial2'] != "УФ" and item1['serial2'] else 0
                         fill_conclusion_by_row(item1, f"{counter_l1}.{counter_l2}", l2_row_to_fill, str(l2_serial))
@@ -162,6 +163,7 @@ def conclusion_table(elements):
                 except KeyError:
                     if item1['serial2']:
                         serial_counter += int(item1['serial2'])
+                    serial1_count += 1 if item1['serial1'] else 0
 
                 if item1['table']:
                     for item2 in item1['table']:
@@ -175,6 +177,8 @@ def conclusion_table(elements):
                         except KeyError:
                             if item2['serial2']:
                                 serial_counter += int(item2['serial2'])
+                        finally:
+                            serial1_count += 1 if item2['serial1'] else 0
 
         serial_counter += int(item['serial2']) if item['serial2'] != "УФ" and item['serial2'] else 0
         fill_conclusion_by_row(item, counter_l1, l1_row_to_fill, str(serial_counter))
