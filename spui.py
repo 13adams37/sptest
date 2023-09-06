@@ -1,5 +1,7 @@
 import json
 import re
+import time
+
 import db
 import MSWord
 import PySimpleGUI as sg

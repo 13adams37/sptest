@@ -1,6 +1,6 @@
 import jsondblite
 import platform
-import hashlib
+import binascii
 import shutil
 
 base_keys = ['object', 'name', 'model', 'part', 'vendor', 'serial1', 'serial2', 'amount', 'uv',
@@ -11,13 +11,14 @@ keys_with_author = ['object', 'author', 'name', 'model', 'part', 'vendor', 'seri
 
 def calculate_checksums(file_path):
     with open(file_path, 'rb') as f:
-        checksum = hashlib.file_digest(f, "sha256")
-    return checksum.hexdigest()
+        buf = f.read()
+        buf = (binascii.crc32(buf) & 0xFFFFFFFF)
+    return "%08X" % buf
 
 
 def temp_db_checksum():
     global temp_db
-    if not calculate_checksums('SATURN_MAIN.db') is calculate_checksums('C:\SP_temp\TEMP_db.db'):
+    if calculate_checksums('SATURN_MAIN.db') != calculate_checksums('C:\SP_temp\TEMP_db.db'):
         temp_db.close()
         shutil.copy2('SATURN_MAIN.db', 'C:\SP_temp\TEMP_db.db')
         temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
