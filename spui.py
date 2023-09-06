@@ -12,7 +12,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.8"
+__version__ = "0.4.9"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -33,9 +33,8 @@ sg.set_global_icon(path_to_icon)
 
 baza = db.DataBase(db_name=db.db)
 settings_db = db.DataBase(db_name=db.settings_db)
-tdb = db.db
-multiprocessing.freeze_support()
 
+multiprocessing.freeze_support()
 listbox_width = 120
 listbox_hight = settings_db.get_by_id("1337")["input_rows"]
 
@@ -1409,7 +1408,7 @@ class Pages:
                                 else:
                                     if item[0] != '444':
                                         try:
-                                            main_content = db.db[item[0]]
+                                            main_content = baza.get_by_id(item[0])
                                         except KeyError:
                                             continue
                                         main_content_name = main_content["name"]
@@ -1619,10 +1618,15 @@ class Pages:
 
     def get_choices(self):
         if self.hints_type:
-            self.choices_name = sorted(baza.get_unique_index_names('names'))
-            self.choices_part = sorted(baza.get_unique_index_names('parts'))
-            self.choices_model = sorted(baza.get_unique_index_names('models'))
-            self.choices_vendor = sorted(baza.get_unique_index_names('vendors'))
+            old_database = db.DataBase(db_name=db.old_db)
+            self.choices_name = sorted(list(set(baza.get_index_only_names('names')
+                                                + old_database.get_index_only_names('names'))))
+            self.choices_part = sorted(list(set(baza.get_index_only_names('parts')
+                                                + old_database.get_index_only_names('parts'))))
+            self.choices_model = sorted(list(set(baza.get_index_only_names('models')
+                                                 + old_database.get_index_only_names('models'))))
+            self.choices_vendor = sorted(list(set(baza.get_index_only_names('vendors')
+                                                  + old_database.get_index_only_names('vendors'))))
 
     def resize_and_update_table(self, data):
         table = self.addtswindow['-TABLE-']
@@ -1724,13 +1728,14 @@ class Pages:
                 self.func = func
                 self.args = args
                 self.timer = None
+                self.thread_timer = 1
 
             def start(self):
                 if self.timer is not None:
                     self.timer.cancel()
                     self.timer = None
 
-                self.timer = threading.Timer(1, self.func, self.args)
+                self.timer = threading.Timer(self.thread_timer, self.func, self.args)
                 self.timer.start()
 
         editlayout = [
@@ -1795,12 +1800,12 @@ class Pages:
         def get_all_values():
             id_doc_list = []
             ids_list = []
-            for element_id in db.db:
+            db.temp_db_checksum()
+            for element_id in db.temp_db:
                 ids_list.append(element_id)
-            ids_list.remove('444')
             ids_list.remove('1337')
             for doc_id in ids_list:
-                id_doc_list.append([doc_id, db.db[doc_id]])
+                id_doc_list.append([doc_id, db.temp_db[doc_id]])
             return id_doc_list
 
         def sort_all_values(index_name):
@@ -1881,6 +1886,7 @@ class Pages:
                                  ts_id=(it_id, 0))
                 table1.clear()
                 table2.clear()
+                db.temp_db_checksum()
 
         while True:
             event, values = self.edittswidow.read()
@@ -1888,8 +1894,9 @@ class Pages:
             if event == "-OPEN-" and values["-IN-"]:
                 if len(values['-BOX-']) > 0:
                     open_editwindow(prediction_ids[sel_item])
-                    make_prediction(values['-IN-'].lower(), active_radio)
-                    update_prediction(prediction_list, sel_item)
+                    executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD FIN-'
+                    executor.thread_timer = 0
+                    executor.start()
 
             elif event == "-CLOSE-" or event == sg.WIN_CLOSED:
                 self.edittswidow.close()
@@ -1915,8 +1922,9 @@ class Pages:
             elif event == '\r':
                 if len(values['-BOX-']) > 0:
                     open_editwindow(prediction_ids[sel_item])
-                    make_prediction(values['-IN-'].lower(), active_radio)
-                    update_prediction(prediction_list, sel_item)
+                    executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD FIN-'
+                    executor.thread_timer = 0
+                    executor.start()
 
             elif event == '-IN-':
                 in_text = values['-IN-'].lower()
@@ -1924,7 +1932,11 @@ class Pages:
                 if in_text != last_text:
                     last_text = in_text
                     executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD DONE-'
+                    executor.thread_timer = 1
                     executor.start()
+
+            elif event == '-THREAD FIN-':
+                update_prediction(prediction_list, sel_item)
 
             elif event == '-THREAD DONE-':
                 sel_item = 0
@@ -1940,8 +1952,9 @@ class Pages:
                 if sel_item == list_element.TKListbox.curselection()[0]:
                     sel_item = list_element.TKListbox.curselection()[0]
                     open_editwindow(prediction_ids[sel_item])
-                    make_prediction(values['-IN-'].lower(), active_radio)
-                    update_prediction(prediction_list, sel_item)
+                    executor.args = lambda: make_prediction(in_text, active_radio), '-THREAD FIN-'
+                    executor.thread_timer = 0
+                    executor.start()
                 else:
                     sel_item = list_element.TKListbox.curselection()[0]
 
@@ -2525,7 +2538,7 @@ class Pages:
         def get_numerated_items(obj_name):
             test_vals.clear()
             test_ids.clear()
-            index_values_dirty = db.db.get_index_values('objects')
+            index_values_dirty = baza.get_unique_index_names('objects')
             prev_id = ''
             index_values = list(filter(lambda x: x[1] == obj_name, index_values_dirty))
 
@@ -2533,7 +2546,7 @@ class Pages:
                 if content[0] != prev_id and content[0] != '444':
                     content_id = content[0]
                     prev_id = content_id
-                    main_content = db.db[content_id]
+                    main_content = baza.get_by_id(content_id)
 
                     if main_content['object'].startswith(obj_name):
                         test_vals.append([count, f'{" ".join(get_displyed(main_content))}'])  # bad
@@ -2546,7 +2559,7 @@ class Pages:
             test_ids.clear()
 
             for count, item in enumerate(items_ids):
-                main_content = db.db[item]
+                main_content = baza.get_by_id(item)
                 test_vals.append([count, f'{" ".join(get_displyed(main_content))}'])
                 test_ids.append(item)
 
@@ -2638,7 +2651,7 @@ class Pages:
 
             elif event == '-SAVE-':
                 for item in test_ids:
-                    content = db.db[item]
+                    content = baza.get_by_id(item)
                     baza.delete_by_id(item)
                     baza.add_dict(content, item)
 
