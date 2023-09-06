@@ -16,8 +16,11 @@ def calculate_checksums(file_path):
 
 
 def temp_db_checksum():
+    global temp_db
     if not calculate_checksums('SATURN_MAIN.db') is calculate_checksums('C:\SP_temp\TEMP_db.db'):
+        temp_db.close()
         shutil.copy2('SATURN_MAIN.db', 'C:\SP_temp\TEMP_db.db')
+        temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
 
 
 def makejson(elements, keys=None):  # making dict
