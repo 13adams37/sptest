@@ -100,10 +100,18 @@ except OSError:
 
 try:
     old_db = jsondblite.Database("C:\SP_temp\old_db.db", create=True)
+    old_db.close()
     shutil.copy2('old_db.db', 'C:\SP_temp\old_db.db')
+    old_db = jsondblite.Database("C:\SP_temp\old_db.db", create=False)
 
 except OSError:
     old_db = jsondblite.Database("C:\SP_temp\old_db.db", create=False)
+    try:
+        old_db.get('444')
+    except KeyError:
+        old_db.close()
+        shutil.copy2('old_db.db', 'C:\SP_temp\old_db.db')
+        old_db = jsondblite.Database("C:\SP_temp\old_db.db", create=False)
 
 try:
     temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=True)
