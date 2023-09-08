@@ -22,8 +22,12 @@ def save_checksum():
 
 
 def get_checksum():
-    with open('main_checksum.txt', 'rt') as f:
-        return f.read()
+    try:
+        with open('main_checksum.txt', 'rt') as f:
+            return f.read()
+    except FileNotFoundError:
+        save_checksum()
+        get_checksum()
 
 
 def temp_db_checksum():
@@ -32,6 +36,7 @@ def temp_db_checksum():
         temp_db.close()
         shutil.copy2('SATURN_MAIN.db', 'C:\SP_temp\TEMP_db.db')
         temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
+        save_checksum()
 
 
 def makejson(elements, keys=None):  # making dict
