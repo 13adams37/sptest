@@ -16,9 +16,19 @@ def calculate_checksums(file_path):
     return "%08X" % buf
 
 
+def save_checksum():
+    with open('main_checksum.txt', 'wt') as f:
+        f.write(str(calculate_checksums('SATURN_MAIN.db')))
+
+
+def get_checksum():
+    with open('main_checksum.txt', 'rt') as f:
+        return f.read()
+
+
 def temp_db_checksum():
     global temp_db
-    if calculate_checksums('SATURN_MAIN.db') != calculate_checksums('C:\SP_temp\TEMP_db.db'):
+    if get_checksum() != calculate_checksums('C:\SP_temp\TEMP_db.db'):
         temp_db.close()
         shutil.copy2('SATURN_MAIN.db', 'C:\SP_temp\TEMP_db.db')
         temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
@@ -115,7 +125,9 @@ except OSError:
 
 try:
     temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=True)
+    temp_db.close()
     shutil.copy2('SATURN_MAIN.db', 'C:\SP_temp\TEMP_db.db')
+    temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
 
 except OSError:
     temp_db = jsondblite.Database("C:\SP_temp\TEMP_db.db", create=False)
@@ -173,9 +185,13 @@ class DataBase:
         with self.dbname:
             self.dbname.add(prepared_dict)
 
+        save_checksum()
+
     def add_dict(self, what, doc_id=None):
         with self.dbname:
             self.dbname.add(all_trim_json(what), doc_id)
+
+        save_checksum()
 
     def search(self, jquery, name):
         with self.dbname:
@@ -225,10 +241,16 @@ class DataBase:
         with self.dbname:
             self.dbname.update(docid, prepared_dict)
 
+        save_checksum()
+
     def update_element_dict(self, docid, doc):
         with self.dbname:
             self.dbname.update(docid, doc)
 
+        save_checksum()
+
     def delete_by_id(self, docid):
         with self.dbname:
             self.dbname.delete(docid)
+
+        save_checksum()
