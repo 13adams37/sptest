@@ -1,7 +1,5 @@
 import json
 import re
-import time
-
 import db
 import MSWord
 import PySimpleGUI as sg
@@ -1134,7 +1132,7 @@ class Pages:
 
             elif event == '-COPY-':
                 pyperclip.copy(json.dumps(
-                    {'sp': baza.makejson(self.get_tsvalues(values))}
+                    {'sp': db.makejson(self.get_tsvalues(values))}
                 ))
 
             elif event == '-PASTE-':
