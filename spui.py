@@ -2239,13 +2239,16 @@ class Pages:
                 if file_path is not None and '.json' in file_path:
                     def change_obj(what, to):
                         temp = what.copy()
+                        print('temp1', temp)
                         temp['object'] = to
+                        print('temp2', temp)
                         if temp['table']:
                             for item1 in temp['table']:
                                 item1['object'] = to
                                 if item1['table']:
                                     for item2 in item1['table']:
                                         item2['object'] = to
+                        print('final temp', temp)
                         return temp
 
                     def search_if_item_in_index(item, index_values):
@@ -2338,7 +2341,7 @@ class Pages:
                             else:
                                 existed_item = baza.get_by_id(obj_id)
                                 new_item = obj_body
-                                new_item_cutted = new_item
+                                new_item_cutted = deepcopy(new_item)
 
                                 del existed_item['object']
                                 del new_item_cutted['object']
@@ -2363,9 +2366,9 @@ class Pages:
                                     existed_answer = popup_yes_no_layouted(lay_test)
                                     if existed_answer:
                                         if values["-IN-"]:
-                                            baza.update_element_dict(change_obj(new_item, values["-IN-"]), obj_id)
+                                            baza.update_element_dict(obj_id, change_obj(new_item, values["-IN-"]))
                                         else:
-                                            baza.update_element_dict(new_item, obj_id)
+                                            baza.update_element_dict(obj_id, new_item)
                         popup_yes("Импортирование завершено.")
         self.importwindow.close()
 
@@ -2538,12 +2541,12 @@ class Pages:
         def get_numerated_items(obj_name):
             test_vals.clear()
             test_ids.clear()
-            index_values_dirty = baza.get_unique_index_names('objects')
+            index_values_dirty = baza.get_index_names('objects')
             prev_id = ''
             index_values = list(filter(lambda x: x[1] == obj_name, index_values_dirty))
 
             for count, content in enumerate(index_values):
-                if content[0] != prev_id and content[0] != '444':
+                if content[0] != prev_id:
                     content_id = content[0]
                     prev_id = content_id
                     main_content = baza.get_by_id(content_id)
