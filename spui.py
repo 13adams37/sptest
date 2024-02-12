@@ -12,7 +12,7 @@ from tabulate import tabulate
 from os import path
 from copy import deepcopy
 
-__version__ = "0.4.9"
+__version__ = "0.5 final"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 headings = ['Объект', 'Наименование', 'Модель', 'Серийный номер', 'Производитель', 'СЗЗ 1', 'СЗЗ 2', 'Кол-во', 'УФ',
             'РГ', 'РГ пп', 'Признак', 'Состав']
@@ -1315,7 +1315,22 @@ class Pages:
             elif event == "_SAVE_":
                 if values['name'] or values['model'] or values['part'] or values['vendor']:
                     validation_state = True
-                    # user input validation
+                    serials = baza.get_index_names('serials')
+
+                    def validate_serials1(current_serial, serial_list):
+                        if current_serial is None or current_serial == "":
+                            return True
+
+                        for serial_item in serial_list:
+                            if current_serial == serial_item[1]:
+                                if ts_id[0] == serial_item[0]:  # edit check
+                                    return True
+                                else:
+                                    sg.popup_no_frame(f'Найден дубликат СЗЗ-1 'f"{current_serial}"''
+                                                      '\n Его использование невозможно!',
+                                                      auto_close_duration=5,
+                                                      auto_close=True, font=fontbig)
+                                    return False
 
                     # int validation
                     if (self.validate_input(values['serial1'], 1, 'СЗЗ-1') and
@@ -1323,6 +1338,16 @@ class Pages:
                         self.validate_input(values['amount'], 1, 'Количество') and
                         self.validate_input(values['rggpp'], 2, 'РГГ ПП')) is not True:
                         validation_state = False
+
+                    if master == True or (master == 'editor' and ts_id[1] == 0):
+                        for table_item in table1:
+                            if validate_serials1(table_item[5], serials) is False:
+                                validation_state = False
+
+                            if table_item[12]:
+                                for table_item1 in table_item[12]:
+                                    if validate_serials1(table_item1[5], serials) is False:
+                                        validation_state = False
 
                     if table1 and not ts_id[1]:  # insides check
                         table_partdata = []
@@ -1378,19 +1403,8 @@ class Pages:
                         table_serialdata.clear()
 
                     if values['serial1']:
-                        serials = baza.get_index_names('serials')
-
-                        for item in serials:
-                            if values['serial1'] == item[1]:
-                                if ts_id[0] == item[0]:  # edit check
-                                    continue
-                                else:
-                                    sg.popup_no_frame(f'Найден дубликат СЗЗ-1 'f"{values['serial1']}"''
-                                                      '\n Его использование невозможно!',
-                                                      auto_close_duration=5,
-                                                      auto_close=True, font=fontbig)
-                                    validation_state = False
-                                    continue
+                        if validate_serials1(values['serial1'], serials) is False:
+                            validation_state = False
 
                     if not (values['serial1'] or values['serial2'] or values['uv']):
                         validation_state = False
