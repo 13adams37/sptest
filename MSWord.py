@@ -131,11 +131,11 @@ def conclusion_table(elements):
 
         if item['table']:
             counter_l2 = 0
-            counter_l3 = 0
             for item1 in item['table']:
                 try:
                     if item1['selected']:
                         counter_l2 += 1
+                        counter_l3 = 0
                         l2_serial = 0
                         table.add_row()
                         current_row += 1
