@@ -11,6 +11,8 @@ import multiprocessing
 from tabulate import tabulate
 from os import path
 from copy import deepcopy
+from PIL import Image, ImageDraw
+from io import BytesIO
 
 __version__ = "0.5 final"
 NULLLIST = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
@@ -2459,75 +2461,93 @@ class Pages:
                 return items_list
 
     def set_conclusion_items_page(self, items_list):
-        def Text(text, size, justification, expand_x=None, key=None):
-            return sg.Text(text, size=size, pad=(1, 1), expand_x=expand_x, justification=justification, key=key)
+        def icon(check):
+            box = (32, 32)
+            background = (255, 255, 255, 0)
+            rectangle = (3, 3, 29, 29)
+            line = ((9, 17), (15, 23), (23, 9))
+            im = Image.new('RGBA', box, background)
+            draw = ImageDraw.Draw(im, 'RGBA')
+            draw.rectangle(rectangle, outline='black', width=3)
+            if check == 1:
+                draw.line(line, fill='black', width=3, joint='curve')
+            elif check == 2:
+                draw.line(line, fill='grey', width=3, joint='curve')
+            with BytesIO() as output:
+                im.save(output, format="PNG")
+                png = output.getvalue()
+            return png
 
-        def generate_display_layout(vals):
-            # Заполнение текста в фрейме
-            text_to_display = \
-                f'{vals["name"]} {vals["model"]} {vals["part"]} {vals["vendor"]} {vals["serial1"]} {vals["serial2"]}'
-            text_to_display = " ".join(text_to_display.split())
-            return [[Text(text_to_display, 95, 'l', True)], ]
-
-        def generate_displayed_items(content, text_key):
-            # Отображение элементов с чекбоксами
-            item_layout = [sg.Checkbox('', font=fontbig, enable_events=True, key=f'{text_key}'),
-                           sg.Frame('', generate_display_layout(content), pad=((0, 5), (0, 5)), relief=sg.RELIEF_FLAT)]
-            return item_layout
-
-        def generate_frame(object_values, frame_key):
+        def generate_treedata_item(items_list, parent_key):
             # Вывод внутренних элементов в Комплекте
-            # Получает 1 Комплект, выводит все элементы в комплекте (3 уровня)
+            # Итерируем каждый комплект, далее - 
+            # Получает 1 Комплект, выводит комплект и вложенные элементы в комплекте (2 уровня)
 
-            frame_layout = []
-            if object_values['table']:
-                for count1, level2 in enumerate(object_values['table']):
-                    key = f'{frame_key}_{count1}'
-                    frame_layout.append(generate_displayed_items(level2, key))
-                    if level2['table']:
-                        for count2, level3 in enumerate(level2['table']):
-                            frame_layout.append(generate_displayed_items(level3, f'{key}_{count2}'))
+            def generate_frame_row(object_values, parent):
+                if object_values['table']:
+                    for count1, level2 in enumerate(object_values['table']):
+                        key = f'{parent}_{count1}'
+                        treedata.Insert(parent, key, level2["name"], [level2["model"], level2["part"], level2["vendor"], level2["serial1"], ""], icon=check[0])
+                        
+                        if level2['table']:
+                            for count2, level3 in enumerate(level2['table']):
+                                treedata.Insert(parent, f'{key}_{count2}', level3["name"], [level3["model"], level3["part"], level3["vendor"], level3["serial1"], ""], icon=check[0])
+            
             try:
-                author = object_values["author"]
+                author = items_list["author"]
             except KeyError:
                 author = ""
+                
+            treedata.Insert('', parent_key, items_list["name"], [items_list["model"], items_list["part"], items_list["vendor"], items_list["serial1"], author])
+            generate_frame_row(items_list, parent_key)
+        
+        check = [icon(0), icon(1), icon(2)]
+        treedata = sg.TreeData()
 
-            frame_text = f'{object_values["name"]} {object_values["model"]} {object_values["part"]} ' \
-                         f'{object_values["vendor"]} {object_values["serial1"]} {author}'
-            frame_text = " ".join(frame_text.split())
-            return sg.Frame(frame_text, frame_layout, pad=((0, 5), 0))
-
-        column_layout = [
-            [generate_frame(content, count)]
-            for count, content in enumerate(items_list)
-        ]
+        # генерация вложенности
+        for count, content in enumerate(items_list):
+            generate_treedata_item(content, count)
 
         layout = [
             [
-                sg.Column(
+                sg.Col(
                     [
                         [sg.Button('Далее', k='-NEXT-', font=fontbutton, auto_size_button=True), ]
                     ],
                 )
             ],
-            [
-                sg.Column(column_layout, scrollable=True, vertical_scroll_only=False,
-                          expand_x=True, expand_y=True, ),
-            ],
+            [sg.Tree(data=treedata, col0_heading='Название', headings=["Модель", "С/Н", "Производитель", "СЗЗ", "Автор"], 
+                     key='-TREE-', expand_x=True, expand_y=True, enable_events=True, auto_size_columns=True, 
+                     select_mode=sg.TABLE_SELECT_MODE_BROWSE, metadata=[])]
         ]
         window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
                            element_justification='c', font=fontbig, return_keyboard_events=True
                            ).Finalize()
         window.Maximize()
+        tree = window['-TREE-']
 
         while True:
             event, values = window.read()
+            
             if event in (sg.WINDOW_CLOSED, 'Exit'):
                 window.close()
                 return None
+            
+            elif event == '-TREE-':
+                checkbox = str(values['-TREE-'][0])
+                result = list(map(int, checkbox.split("_")))
+                
+                if len(result) > 1:
+                    if checkbox in tree.metadata:
+                        tree.metadata.remove(checkbox)
+                        tree.update(key=checkbox, icon=check[0])
+                    else:
+                        tree.metadata.append(checkbox)
+                        tree.update(key=checkbox, icon=check[1])
+            
             elif event == '-NEXT-' or event == '\r':
                 test_data = deepcopy(items_list)
-                keys_with_true_values = [key for key, value in values.items() if value == True]
+                keys_with_true_values = tree.metadata
                 # for list loop, get a path, add key to item
                 for item in keys_with_true_values:
                     result = list(map(int, item.split("_")))
