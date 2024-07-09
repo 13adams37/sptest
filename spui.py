@@ -2461,24 +2461,26 @@ class Pages:
                 return items_list
 
     def set_conclusion_items_page(self, items_list):
-        def icon(check):
+        theme_button_color = sg.theme_button_color()[0]
+
+        def icon(checkbox_check):
             box = (32, 32)
             background = (255, 255, 255, 0)
             rectangle = (3, 3, 29, 29)
             line = ((9, 17), (15, 23), (23, 9))
             im = Image.new('RGBA', box, background)
             draw = ImageDraw.Draw(im, 'RGBA')
-            draw.rectangle(rectangle, outline='black', width=3)
-            if check == 1:
-                draw.line(line, fill='black', width=3, joint='curve')
-            elif check == 2:
-                draw.line(line, fill='grey', width=3, joint='curve')
+            draw.rectangle(rectangle, outline=theme_button_color, width=3)
+            if checkbox_check == 1:
+                draw.line(line, fill=theme_button_color, width=3, joint='curve')
+            elif checkbox_check == 2:
+                draw.line(line, fill='red', width=3, joint='curve')
             with BytesIO() as output:
                 im.save(output, format="PNG")
                 png = output.getvalue()
             return png
 
-        def generate_treedata_item(items_list, parent_key):
+        def generate_treedata_item(treedata_items_list, parent_key):
             # Вывод внутренних элементов в Комплекте
             # Итерируем каждый комплект, далее - 
             # Получает 1 Комплект, выводит комплект и вложенные элементы в комплекте (2 уровня)
@@ -2487,20 +2489,27 @@ class Pages:
                 if object_values['table']:
                     for count1, level2 in enumerate(object_values['table']):
                         key = f'{parent}_{count1}'
-                        treedata.Insert(parent, key, level2["name"], [level2["model"], level2["part"], level2["vendor"], level2["serial1"], ""], icon=check[0])
-                        
+                        treedata.Insert(parent, key, level2["name"],
+                                        [level2["model"], level2["part"], level2["vendor"], level2["serial1"], ""],
+                                        icon=check[0])
+
                         if level2['table']:
                             for count2, level3 in enumerate(level2['table']):
-                                treedata.Insert(parent, f'{key}_{count2}', level3["name"], [level3["model"], level3["part"], level3["vendor"], level3["serial1"], ""], icon=check[0])
-            
+                                treedata.Insert(parent, f'{key}_{count2}', level3["name"],
+                                                [level3["model"], level3["part"], level3["vendor"], level3["serial1"],
+                                                 ""], icon=check[0])
+
             try:
-                author = items_list["author"]
+                author = treedata_items_list["author"]
             except KeyError:
                 author = ""
-                
-            treedata.Insert('', parent_key, items_list["name"], [items_list["model"], items_list["part"], items_list["vendor"], items_list["serial1"], author])
-            generate_frame_row(items_list, parent_key)
-        
+
+            treedata.Insert('', parent_key, treedata_items_list["name"],
+                            [treedata_items_list["model"], treedata_items_list["part"], treedata_items_list["vendor"],
+                             treedata_items_list["serial1"],
+                             author])
+            generate_frame_row(treedata_items_list, parent_key)
+
         check = [icon(0), icon(1), icon(2)]
         treedata = sg.TreeData()
 
@@ -2516,8 +2525,9 @@ class Pages:
                     ],
                 )
             ],
-            [sg.Tree(data=treedata, col0_heading='Название', headings=["Модель", "С/Н", "Производитель", "СЗЗ", "Автор"], 
-                     key='-TREE-', expand_x=True, expand_y=True, enable_events=True, auto_size_columns=True, 
+            [sg.Tree(data=treedata, col0_heading='Название',
+                     headings=["Модель", "С/Н", "Производитель", "СЗЗ", "Автор"],
+                     key='-TREE-', expand_x=True, expand_y=True, enable_events=True, auto_size_columns=True,
                      select_mode=sg.TABLE_SELECT_MODE_BROWSE, metadata=[])]
         ]
         window = sg.Window(f'{items_list[0]["object"]}', layout, margins=(10, 10), resizable=True,
@@ -2528,15 +2538,15 @@ class Pages:
 
         while True:
             event, values = window.read()
-            
+
             if event in (sg.WINDOW_CLOSED, 'Exit'):
                 window.close()
                 return None
-            
+
             elif event == '-TREE-':
                 checkbox = str(values['-TREE-'][0])
                 result = list(map(int, checkbox.split("_")))
-                
+
                 if len(result) > 1:
                     if checkbox in tree.metadata:
                         tree.metadata.remove(checkbox)
@@ -2544,7 +2554,7 @@ class Pages:
                     else:
                         tree.metadata.append(checkbox)
                         tree.update(key=checkbox, icon=check[1])
-            
+
             elif event == '-NEXT-' or event == '\r':
                 test_data = deepcopy(items_list)
                 keys_with_true_values = tree.metadata
